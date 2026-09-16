@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#faf6f0">
+<title>Papan Marketing Crackling</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%93%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:light;
+    --paper:#faf6f0;
+    --surface:#ffffff;
+    --ink:#241708;
+    --ink-soft:#7d6c58;
+    --ink-faint:#a89880;
+    --line:#ece3d6;
+    --ember:#c1440e;
+    --ember-soft:#fbeee7;
+    --kriuk:#d99208;
+    --herb:#4f7a36;
+    --shadow:0 1px 2px rgba(60,40,15,.04), 0 8px 24px -16px rgba(60,40,15,.28);
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.55;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:rgba(193,68,14,.12);
+  }
+
+  h1,h2,h3{ font-family:'Baloo 2',system-ui,sans-serif; letter-spacing:-.01em; margin:0; text-wrap:balance; }
+  h1{ font-size:23px; font-weight:700; line-height:1.2; }
+  h2{ font-size:19px; font-weight:700; }
+  h3{ font-size:15px; font-weight:700; }
+  .num{ font-family:'JetBrains Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+
+  .skip{
+    position:absolute; left:-9999px; top:8px; z-index:99;
+    background:var(--ink); color:#fff; padding:10px 16px; border-radius:9px; font-size:14px; font-weight:600;
+  }
+  .skip:focus{ left:16px; }
+
+  /* ---------- kerangka + sidebar ---------- */
+  .shell{ display:flex; align-items:flex-start; gap:22px; max-width:1240px; margin:0 auto; padding:22px 16px 64px; }
+
+  .sidebar{
+    width:212px; flex:none; position:sticky; top:22px;
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); padding:16px 12px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:2px 8px 14px; }
+  .brand .mark{
+    width:32px; height:32px; border-radius:9px; flex:none;
+    background:linear-gradient(135deg,var(--ember),var(--kriuk));
+    display:grid; place-items:center; color:#fff; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px;
+  }
+  .brand .txt{ min-width:0; }
+  .brand .txt b{ display:block; font-family:'Baloo 2',sans-serif; font-size:15px; line-height:1.2; }
+  .brand .txt span{ display:block; font-size:11px; color:var(--ink-faint); }
+
+  nav.side{ display:flex; flex-direction:column; gap:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:11px;
+    padding:10px 11px; border-radius:10px;
+    color:var(--ink-soft); text-decoration:none; font-size:14px; font-weight:500;
+    transition:background-color .14s, color .14s;
+  }
+  .nav-item svg{ flex:none; }
+  .nav-item:hover{ background:#fbf7f1; color:var(--ink); }
+  .nav-item[aria-current=page]{ background:var(--ember-soft); color:var(--ember); font-weight:700; }
+  .nav-item:focus-visible{ outline:2px solid var(--kriuk); outline-offset:2px; }
+  .side-foot{ margin-top:14px; padding:10px 11px 2px; border-top:1px solid var(--line); font-size:11px; color:var(--ink-faint); }
+
+  .content{ flex:1; min-width:0; }
+  .page-head{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+
+  /* ---------- kartu & elemen umum ---------- */
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:18px; }
+  .card-head{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:16px; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:2px 0 0; }
+  .group-label{ font-size:12px; color:var(--ink-faint); font-weight:600; margin:22px 0 9px; }
+
+  .hero-num{ font-size:32px; font-weight:700; line-height:1.1; letter-spacing:-.02em; }
+  .delta{ font-size:13px; font-weight:600; }
+  .up{ color:var(--herb); } .down{ color:var(--ember); } .flat{ color:var(--ink-faint); }
+
+  .split{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .tile{ border:1px solid var(--line); border-radius:11px; padding:13px 14px; background:#fffdfa; }
+  .tile .label{ font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:7px; }
+  .tile .value{ font-size:18px; font-weight:700; margin-top:5px; }
+  .tile .hint{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .tile.accent{ background:#fdf6e6; border-color:#f0dfb8; }
+  .tile.warn{ background:var(--ember-soft); border-color:#f4d9cc; }
+  .swatch{ width:9px; height:9px; border-radius:3px; flex:none; }
+
+  .chartbox svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .legend{ display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--ink-soft); margin-top:12px; }
+  .legend span{ display:flex; align-items:center; gap:7px; }
+  .legend .dash{ width:15px; height:0; border-top:2px dashed var(--ink); flex:none; }
+
+  .two-col{ display:grid; gap:18px; grid-template-columns:auto 1fr; align-items:center; }
+  .donut-legend{ display:grid; gap:9px; }
+  .donut-legend .r{ display:flex; align-items:center; gap:9px; font-size:13px; }
+  .donut-legend .r .nm{ flex:1; color:var(--ink-soft); min-width:0; }
+  .donut-legend .r .vl{ font-weight:700; }
+  .donut-legend .r .pc{ color:var(--ink-faint); width:38px; text-align:right; font-size:12px; }
+
+  .progress{ height:12px; border-radius:99px; background:#f2ebe0; overflow:hidden; margin-top:10px; }
+  .progress .fill{ height:100%; border-radius:99px; background:var(--kriuk); }
+  .progress.over .fill{ background:var(--ember); }
+
+  /* ---------- form ---------- */
+  form.row{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); align-items:end; margin-top:22px; padding-top:18px; border-top:1px dashed var(--line); }
+  #ads-form{ grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) minmax(170px,2fr) auto; }
+  #budget-form{ grid-template-columns:1fr auto; margin-top:14px; padding-top:0; border-top:0; }
+  #work-form{ grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) auto; margin-top:16px; }
+  label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:500; }
+  input[type=date], input[type=number], input[type=text], select{
+    width:100%; font:inherit; font-size:15px; color:var(--ink);
+    background:#fffdfa; border:1px solid var(--line); border-radius:9px; padding:10px 11px;
+  }
+  input[type=number]{ font-family:'JetBrains Mono',monospace; }
+  input:hover, select:hover{ border-color:#ddd0bd; }
+  input:focus-visible, button:focus-visible, select:focus-visible, a:focus-visible{ outline:2px solid var(--kriuk); outline-offset:2px; }
+
+  button{
+    font:inherit; font-weight:600; font-size:15px; cursor:pointer;
+    border:1px solid transparent; border-radius:9px; padding:10px 16px;
+    transition:transform .14s cubic-bezier(.2,.8,.2,1), background-color .14s, border-color .14s, opacity .14s;
+  }
+  button[disabled]{ opacity:.55; cursor:progress; }
+  .btn-primary{ background:var(--ember); color:#fff; width:100%; }
+  .btn-primary:hover:not([disabled]){ background:#a93a0c; transform:translateY(-1px); }
+  .btn-primary:active:not([disabled]){ transform:translateY(0); }
+  .btn-quiet{ background:#fffdfa; border-color:var(--line); color:var(--ink-soft); padding:7px 13px; font-size:13px; }
+  .btn-quiet:hover{ border-color:#ddd0bd; color:var(--ink); }
+  .btn-quiet[aria-pressed=true]{ background:var(--ink); border-color:var(--ink); color:#fff; }
+  .btn-copy{ background:var(--ink); color:#fff; padding:8px 15px; font-size:13.5px; }
+  .btn-copy:hover{ background:#3a2712; transform:translateY(-1px); }
+  .seg-group{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  .facts{ margin-top:16px; font-size:13.5px; color:var(--ink-soft); display:grid; gap:5px; }
+  .facts strong{ color:var(--ink); }
+  .roas-line{ font-size:13.5px; color:var(--ink-soft); margin-top:14px; }
+  .roas-line strong{ color:var(--ink); }
+
+  .hintlabel{ color:var(--ink-faint); font-weight:400; }
+  .table-scroll{ overflow-x:auto; margin-top:4px; }
+  table.cmp{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
+  table.cmp th, table.cmp td{ padding:10px 12px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
+  table.cmp th{ font-size:11.5px; font-weight:600; color:var(--ink-faint); text-align:right; }
+  table.cmp th:first-child, table.cmp td:first-child{ text-align:left; }
+  table.cmp td{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+  table.cmp td:first-child{ font-family:'Plus Jakarta Sans',sans-serif; display:flex; align-items:center; gap:8px; }
+  table.cmp tbody tr:last-child td{ border-bottom:0; }
+  table.cmp tr.tot td{ font-weight:700; border-top:1px solid var(--line); }
+
+  ul.notes{ list-style:none; margin:14px 0 0; padding:0; }
+  ul.notes li{ display:flex; gap:11px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  ul.notes li:last-child{ border-bottom:0; }
+  ul.notes .when{ color:var(--ink-faint); flex:none; width:58px; font-size:12.5px; }
+  ul.notes .what{ min-width:0; overflow-wrap:anywhere; }
+
+  .social-grid{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); }
+  .social{ border:1px solid var(--line); border-radius:11px; padding:14px; background:#fffdfa; }
+  .social .name{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+  .social .count{ font-size:22px; font-weight:700; margin-top:8px; }
+  .social .meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .social .spark{ margin-top:10px; }
+  .social .spark svg{ width:100%; height:38px; display:block; }
+  .ico{ width:22px; height:22px; border-radius:6px; flex:none; }
+
+  /* ---------- kalender jadwal ---------- */
+  .cal-bar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .cal-bar .mname{ font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-dow{ text-align:center; font-size:11px; color:var(--ink-faint); font-weight:600; padding-bottom:2px; }
+  .cal-cell{
+    border:1px solid var(--line); background:#fffdfa; border-radius:10px;
+    min-height:62px; padding:7px 6px 6px; text-align:left; width:100%;
+    display:flex; flex-direction:column; gap:4px; cursor:pointer;
+    font:inherit; color:var(--ink);
+    transition:border-color .14s, background-color .14s;
+  }
+  .cal-cell:hover{ border-color:#ddd0bd; background:#fdfaf5; }
+  .cal-cell.blank{ border:0; background:transparent; cursor:default; }
+  .cal-cell .dnum{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-soft); }
+  .cal-cell.today .dnum{ color:var(--ember); font-weight:700; }
+  .cal-cell.today{ border-color:#f0c9b7; }
+  .cal-cell[aria-pressed=true]{ border-color:var(--ember); background:var(--ember-soft); }
+  .cal-cell .dots{ display:flex; gap:3px; flex-wrap:wrap; }
+  .cal-cell .dot{ width:6px; height:6px; border-radius:50%; background:var(--kriuk); }
+  .cal-cell .dot.long{ background:var(--herb); }
+  .cal-cell .dot.done{ background:#ddd0bd; }
+  .cal-cell .more{ font-size:10px; color:var(--ink-faint); }
+
+  ul.work{ list-style:none; margin:0; padding:0; }
+  ul.work li{ display:flex; align-items:flex-start; gap:11px; padding:11px 0; border-bottom:1px solid var(--line); }
+  ul.work li:last-child{ border-bottom:0; }
+  ul.work input[type=checkbox]{ width:20px; height:20px; accent-color:var(--herb); flex:none; cursor:pointer; margin-top:2px; }
+  ul.work .body{ flex:1; min-width:0; }
+  ul.work .t{ font-size:14.5px; overflow-wrap:anywhere; }
+  ul.work .m{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+  ul.work .done .t{ text-decoration:line-through; color:var(--ink-faint); }
+  .chip{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:99px; }
+  .chip.pendek{ background:#fdf6e6; color:#8a6205; }
+  .chip.panjang{ background:#eaf3e4; color:var(--herb); }
+  .chip.late{ background:var(--ember-soft); color:var(--ember); }
+  .del{ background:none; border:0; color:var(--ink-faint); font-size:19px; line-height:1; padding:5px 9px; border-radius:7px; }
+  .del:hover{ color:var(--ember); background:var(--ember-soft); }
+
+  .banner{ background:#fdf6e6; border:1px solid #f0dfb8; color:#7a5c12; font-size:12.5px; border-radius:10px; padding:9px 13px; margin-bottom:18px; }
+  .empty{ color:var(--ink-faint); font-size:13.5px; padding:14px 0; display:block; }
+  .saved{ font-size:12.5px; color:var(--herb); font-weight:600; opacity:0; transition:opacity .2s; display:block; margin-top:8px; }
+  .saved.show{ opacity:1; }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  @media (max-width:900px){
+    /* align-items:stretch penting — kalau flex-start, kolom ikut melebar mengikuti tabel */
+    .shell{ flex-direction:column; align-items:stretch; gap:14px; padding-top:14px; }
+    .sidebar{ width:100%; position:static; padding:12px; min-width:0; }
+    .content{ width:100%; min-width:0; }
+    .brand{ padding-bottom:10px; }
+    nav.side{ flex-direction:row; overflow-x:auto; gap:6px; padding-bottom:2px; }
+    .nav-item{ flex:none; padding:9px 12px; font-size:13.5px; white-space:nowrap; }
+    .side-foot{ display:none; }
+  }
+  @media (max-width:640px){
+    .two-col{ grid-template-columns:1fr; justify-items:center; }
+    .donut-legend{ width:100%; }
+  }
+  @media (max-width:560px){
+    h1{ font-size:20px; }
+    .hero-num{ font-size:27px; }
+    .card{ padding:16px; border-radius:12px; }
+    form.row, #ads-form, #budget-form, #work-form{ grid-template-columns:1fr; }
+    .cal-cell{ min-height:50px; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+<a href="#main" class="skip">Lompat ke konten</a>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">C</span>
+      <span class="txt"><b translate="no">Crackling</b><span>Papan Marketing</span></span>
+    </div>
+    <nav class="side" aria-label="Menu utama">
+      <a class="nav-item" href="#ringkasan" data-page="ringkasan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Ringkasan
+      </a>
+      <a class="nav-item" href="#penjualan" data-page="penjualan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5.5-5.5 3.5 3.5L21 6"/><path d="M15 6h6v6"/></svg>
+        Penjualan
+      </a>
+      <a class="nav-item" href="#iklan" data-page="iklan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        Iklan
+      </a>
+      <a class="nav-item" href="#sosial" data-page="sosial">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+        Social media
+      </a>
+      <a class="nav-item" href="#jadwal" data-page="jadwal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/></svg>
+        Jadwal kerja
+      </a>
+    </nav>
+    <p class="side-foot"><span id="mode-label" class="num"></span><br><span id="today-label"></span></p>
+  </aside>
+
+  <main class="content" id="main">
+    <div class="banner" id="demo-banner" hidden></div>
+
+    <!-- ============ RINGKASAN ============ -->
+    <section class="panel" id="page-ringkasan" aria-labelledby="h-ringkasan">
+      <div class="page-head">
+        <div>
+          <h1 id="h-ringkasan">Ringkasan</h1>
+          <p class="sub" id="recap-period"></p>
+        </div>
+        <div class="seg-group">
+          <button class="btn-quiet" data-range="7" aria-pressed="true">7 hari</button>
+          <button class="btn-quiet" data-range="30" aria-pressed="false">30 hari</button>
+          <button class="btn-copy" id="copy-recap">Salin rekap</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="split" id="recap-kpi"></div>
+        <div class="facts" id="recap-facts"></div>
+        <span class="saved" id="recap-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Penjualan vs biaya iklan</h2>
+            <p class="sub">Batang = penjualan per cabang, garis putus-putus = biaya iklan</p>
+          </div>
+        </div>
+        <div class="chartbox" id="sales-chart"></div>
+        <div class="legend" id="chart-legend"></div>
+      </div>
+    </section>
+
+    <!-- ============ PENJUALAN ============ -->
+    <section class="panel" id="page-penjualan" aria-labelledby="h-penjualan">
+      <div class="page-head">
+        <div>
+          <h1 id="h-penjualan">Penjualan</h1>
+          <p class="sub">Dari ESB, Gojek/Grab, dan Paper &mdash; dua cabang</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="sub" style="margin:0">Hari ini</p>
+        <div class="hero-num num" id="sales-today">Rp0</div>
+        <div class="delta" id="sales-delta">&nbsp;</div>
+
+        <p class="group-label">Per cabang hari ini</p>
+        <div class="split" id="branch-tiles"></div>
+
+        <p class="group-label">Per sumber hari ini</p>
+        <div class="split" id="source-tiles"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Komposisi sumber</h2><p class="sub" id="donut-sub"></p></div></div>
+        <div class="two-col">
+          <div id="source-donut"></div>
+          <div class="donut-legend" id="source-legend"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Input penjualan</h2><p class="sub">Pilih tanggal dan cabang &mdash; angka lama otomatis muncul untuk dikoreksi</p></div></div>
+        <form class="row" id="sales-form" style="margin-top:0;padding-top:0;border-top:0">
+          <div>
+            <label for="s-date">Tanggal</label>
+            <input type="date" id="s-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="s-branch">Cabang</label>
+            <select id="s-branch"></select>
+          </div>
+          <div>
+            <label for="s-esb">ESB</label>
+            <input type="number" id="s-esb" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="s-gojek">Gojek / Grab</label>
+            <input type="number" id="s-gojek" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="s-paper">Paper</label>
+            <input type="number" id="s-paper" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="sales-saved" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ============ IKLAN ============ -->
+    <section class="panel" id="page-iklan" aria-labelledby="h-iklan">
+      <div class="page-head">
+        <div>
+          <h1 id="h-iklan">Iklan</h1>
+          <p class="sub" id="budget-month-label"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Pemakaian budget</h2></div></div>
+        <div class="tile">
+          <div class="label">Budget bulan ini</div>
+          <div class="value num" id="budget-used">Rp0</div>
+          <div class="progress" id="budget-progress" aria-hidden="true"><div class="fill" style="width:0%"></div></div>
+          <div class="hint" id="budget-hint"></div>
+        </div>
+        <form class="row" id="budget-form">
+          <div>
+            <label for="b-amount">Ubah budget iklan bulan ini</label>
+            <input type="number" id="b-amount" min="0" step="100000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Total biaya iklan</h2><p class="sub" id="spend-period"></p></div></div>
+        <div class="hero-num num" id="spend-total">Rp0</div>
+        <div class="delta" id="spend-delta">&nbsp;</div>
+        <p class="group-label">Per channel</p>
+        <div class="split" id="channel-tiles"></div>
+        <p class="group-label">Biaya per hari, dipecah per channel</p>
+        <div class="chartbox" id="spend-chart"></div>
+        <div class="legend" id="spend-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Performa iklan</h2><p class="sub" id="perf-sub"></p></div></div>
+        <div class="split" id="perf-tiles"></div>
+        <p class="roas-line" id="roas-line"></p>
+        <p class="group-label">Efisiensi: CPC &amp; CTR per hari</p>
+        <div class="chartbox" id="eff-chart"></div>
+        <div class="legend" id="eff-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Perbandingan channel</h2><p class="sub" id="table-sub"></p></div></div>
+        <div class="table-scroll">
+          <table class="cmp" id="channel-table"></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Input data iklan</h2>
+            <p class="sub">Angka bisa disalin langsung dari Meta Ads Manager / TikTok Ads Manager. Untuk KOL, isi biaya dan jangkauan saja.</p>
+          </div>
+        </div>
+        <form class="row" id="ads-form">
+          <div>
+            <label for="a-date">Tanggal</label>
+            <input type="date" id="a-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="a-channel">Channel</label>
+            <select id="a-channel"></select>
+          </div>
+          <div>
+            <label for="a-spend">Biaya <span class="hintlabel">Amount spent</span></label>
+            <input type="number" id="a-spend" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-impr">Impresi <span class="hintlabel">Impressions</span></label>
+            <input type="number" id="a-impr" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-reach">Jangkauan <span class="hintlabel">Reach</span></label>
+            <input type="number" id="a-reach" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-clicks">Klik <span class="hintlabel">Link clicks</span></label>
+            <input type="number" id="a-clicks" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-results">Hasil <span class="hintlabel">Results</span></label>
+            <input type="number" id="a-results" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-value">Nilai hasil <span class="hintlabel">Conversion value</span></label>
+            <input type="number" id="a-value" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="ads-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Promo yang jalan</h2><p class="sub">Catatan promo bikin naik-turun penjualan ada ceritanya</p></div></div>
+        <ul class="notes" id="note-list"></ul>
+        <form class="row" id="note-form">
+          <div>
+            <label for="n-date">Tanggal</label>
+            <input type="date" id="n-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="n-note">Promo hari itu</label>
+            <input type="text" id="n-note" placeholder="mis. Bundling keluarga weekend…" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="note-saved" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ============ SOCIAL MEDIA ============ -->
+    <section class="panel" id="page-sosial" aria-labelledby="h-sosial">
+      <div class="page-head">
+        <div>
+          <h1 id="h-sosial">Social media</h1>
+          <p class="sub" id="social-sub"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="social-grid" id="social-grid"></div>
+        <form class="row" id="social-form">
+          <div>
+            <label for="so-date">Tanggal</label>
+            <input type="date" id="so-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="so-ig">Instagram</label>
+            <input type="number" id="so-ig" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="so-tt">TikTok</label>
+            <input type="number" id="so-tt" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="so-th">Threads</label>
+            <input type="number" id="so-th" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="social-saved" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ============ JADWAL KERJA ============ -->
+    <section class="panel" id="page-jadwal" aria-labelledby="h-jadwal">
+      <div class="page-head">
+        <div>
+          <h1 id="h-jadwal">Jadwal kerja</h1>
+          <p class="sub">Sulthan isi sendiri pekerjaannya &mdash; pilih tanggal, tulis apa yang dikerjakan</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="split" id="work-stats"></div>
+      </div>
+
+      <div class="card">
+        <div class="cal-bar">
+          <button class="btn-quiet" id="cal-prev" aria-label="Bulan sebelumnya">&larr;</button>
+          <span class="mname" id="cal-month"></span>
+          <button class="btn-quiet" id="cal-next" aria-label="Bulan berikutnya">&rarr;</button>
+        </div>
+        <div class="cal-grid" id="cal-dow" aria-hidden="true"></div>
+        <div class="cal-grid" id="cal-grid" style="margin-top:6px"></div>
+        <div class="legend" style="margin-top:14px">
+          <span><span class="swatch" style="background:var(--kriuk);border-radius:50%"></span>jangka pendek</span>
+          <span><span class="swatch" style="background:var(--herb);border-radius:50%"></span>jangka panjang</span>
+          <span><span class="swatch" style="background:#ddd0bd;border-radius:50%"></span>selesai</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2 id="work-day-title">Pekerjaan</h2><p class="sub" id="work-day-sub"></p></div></div>
+        <ul class="work" id="work-list"></ul>
+        <form class="row" id="work-form">
+          <div>
+            <label for="w-title">Pekerjaan apa?</label>
+            <input type="text" id="w-title" placeholder="mis. Bikin konten promo gajian…" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="w-scope">Jangka</label>
+            <select id="w-scope">
+              <option value="pendek">Jangka pendek</option>
+              <option value="panjang">Jangka panjang</option>
+            </select>
+          </div>
+          <div><button class="btn-primary" type="submit">Tambah</button></div>
+        </form>
+        <span class="saved" id="work-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Belum selesai &amp; lewat tanggal</h2><p class="sub">Yang tanggalnya sudah lewat tapi belum dicentang</p></div></div>
+        <ul class="work" id="work-late"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Rencana jangka panjang</h2><p class="sub">Semua pekerjaan jangka panjang yang belum selesai</p></div></div>
+        <ul class="work" id="work-long"></ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
