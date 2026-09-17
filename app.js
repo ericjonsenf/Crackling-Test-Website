@@ -1097,10 +1097,12 @@
 
     wireForms();
     wireWork();
-    if (perm.money) renderNumbers();
-    else renderAdsOnly();
-    if (perm.social) renderSocial();
-    renderWork();
+    // di-await supaya kegagalan render ikut tertangkap try/catch di boot(),
+    // bukan jadi unhandled rejection yang tidak terlihat siapa pun
+    if (perm.money) await renderNumbers();
+    else await renderAdsOnly();
+    if (perm.social) await renderSocial();
+    await renderWork();
   }
 
   // Peran tanpa akses penjualan: tetap butuh angka iklan, tapi tanpa data omzet.
