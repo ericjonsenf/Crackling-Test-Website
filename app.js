@@ -1120,9 +1120,14 @@
   }
 
   // session boleh dioper langsung dari hasil login; kalau tidak, baru diambil ulang.
-  async function boot(session) {
+  // firstLoad = pembukaan halaman biasa (belum tentu sudah login), jadi layar
+  // login ditampilkan polos tanpa pesan error.
+  async function boot(session, firstLoad) {
     if (!session) session = await Auth.session();
-    if (!session) { showLogin(); return; }
+    if (!session) {
+      showLogin(firstLoad ? '' : 'Login berhasil tapi sesi tidak terbaca. Coba muat ulang halaman (Ctrl+Shift+R).');
+      return;
+    }
 
     var res = await Auth.profile(session.user.id);
     if (res.error) {
@@ -1170,6 +1175,6 @@
       location.reload();
     });
 
-    boot();
+    boot(null, true);
   });
 })();
