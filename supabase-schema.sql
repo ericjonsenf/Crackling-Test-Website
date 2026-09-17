@@ -1,6 +1,6 @@
--- ============================================================
+-============================================================
 -- Papan Marketing Crackling — skema Supabase
--- Jalankan SEKALI di: Supabase -> SQL Editor -> New query -> paste -> Run
+-- Jalankan SEKALI di:-  Supabase -> SQL Editor -> New query -> paste -> Run
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -197,13 +197,13 @@ create policy "jadwal: hapus" on work_items for delete
 --       Password : bebas
 --       CENTANG "Auto Confirm User" — kalau tidak, akunnya tidak bisa dipakai.
 --
---    b. Tetapkan peran untuk tiap akun, satu perintah per orang:
+--    b. Tetapkan peran untuk tiap akun, satu perintah per orang.
+--       Catatan: JANGAN pakai bentuk "insert ... select ... limit 1 on conflict",
+--       PostgreSQL menolaknya. Pakai bentuk di bawah ini.
 --
 --    insert into profiles (id, name, role)
---    select id, 'Eric', 'owner' from auth.users where email = 'eric@crackling.id';
---
---    insert into profiles (id, name, role)
---    select id, 'Sulthan', 'lead' from auth.users where email = 'sulthan@crackling.id';
+--    select id, 'Sulthan', 'lead' from auth.users where email = 'sulthan@crackling.id'
+--    on conflict (id) do update set name = excluded.name, role = excluded.role;
 --
 --    Peran yang tersedia: 'owner', 'lead', 'ads', 'social'
 --

@@ -128,10 +128,10 @@
       return await sb.auth.signInWithPassword({ email: email, password: password });
     },
     async signOut() { await sb.auth.signOut(); },
-    // Ambil profil + peran. Kalau barisnya belum ada, akunnya belum diberi peran.
+    // Ambil profil + peran. Kembalikan errornya juga supaya kegagalan baca
+    // (misal ditolak RLS) tidak tersamar jadi "belum diberi peran".
     async profile(userId) {
-      var res = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
-      return res.data;
+      return await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
     }
   };
 
@@ -1119,16 +1119,27 @@
     else renderAdsOnly();
   }
 
-  async function boot() {
-    var session = await Auth.session();
+  // session boleh dioper langsung dari hasil login; kalau tidak, baru diambil ulang.
+  async function boot(session) {
+    if (!session) session = await Auth.session();
     if (!session) { showLogin(); return; }
-    var profile = await Auth.profile(session.user.id);
-    if (!profile) {
+
+    var res = await Auth.profile(session.user.id);
+    if (res.error) {
+      showLogin('Gagal membaca profil: ' + res.error.message);
+      return;
+    }
+    if (!res.data) {
       await Auth.signOut();
       showLogin('Akun ini belum diberi peran. Minta owner menjalankan perintah penetapan peran di Supabase.');
       return;
     }
-    startApp(profile);
+    try {
+      await startApp(res.data);
+    } catch (e) {
+      // Jangan pernah gagal diam-diam — tampilkan sebabnya.
+      showLogin('Dashboard gagal dimuat: ' + (e && e.message ? e.message : e));
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -1150,7 +1161,8 @@
           ? 'Username atau password salah.' : res.error.message);
         return;
       }
-      boot();
+      // pakai sesi hasil login langsung, jangan ambil ulang (ada jeda tulis/baca)
+      boot(res.data && res.data.session);
     });
 
     document.getElementById('logout-btn').addEventListener('click', async function () {
