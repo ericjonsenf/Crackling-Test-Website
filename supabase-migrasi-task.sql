@@ -63,17 +63,21 @@ left join profiles pa on pa.id = t.assignee_id
 left join profiles pc on pc.id = t.created_by
 order by t.deadline;
 
+
 -- ============================================================
--- 5. TARGET OMZET BULANAN PER CABANG
---    Dipasang per bulan per cabang, supaya dashboard bisa menghitung
---    sudah berapa persen tercapai dan perlu berapa per hari lagi.
+-- 5. TARGET OMZET BULANAN
+--    Bentuknya campuran, mengikuti cara Crackling menetapkan target:
+--      - Dine-in (ESB) dipecah per cabang
+--      - Gojek/Grab dan Paper targetnya total, tidak per cabang
+--    Karena itu kolom branch memakai nilai 'semua' untuk yang tidak dipecah.
 -- ============================================================
 create table targets (
-  month text not null,                 -- format '2026-09'
-  branch text not null,                -- 'gading_serpong' | 'kelapa_gading'
+  month text not null,                          -- '2026-09'
+  source text not null,                         -- 'esb' | 'gojek_grab' | 'paper'
+  branch text not null default 'semua',         -- 'gading_serpong' | 'kelapa_gading' | 'semua'
   revenue_target numeric not null default 0,
   updated_at timestamptz not null default now(),
-  primary key (month, branch)
+  primary key (month, source, branch)
 );
 
 alter table targets enable row level security;
@@ -84,4 +88,14 @@ create policy "target: lihat" on targets for select using (sees_money());
 create policy "target: isi" on targets for insert with check (sees_money());
 create policy "target: ubah" on targets for update using (sees_money()) with check (sees_money());
 
-select 'Migrasi selesai. Tabel tasks dan targets siap dipakai.' as hasil;
+-- 6. Isi target bulan berjalan sesuai ketetapan owner:
+--    Dine-in Gading Serpong 300jt, Dine-in Kelapa Gading 200jt,
+--    Gojek/Grab 60jt, Paper 60jt. Total 620jt.
+insert into targets (month, source, branch, revenue_target) values
+  (to_char(current_date, 'YYYY-MM'), 'esb',        'gading_serpong', 300000000),
+  (to_char(current_date, 'YYYY-MM'), 'esb',        'kelapa_gading',  200000000),
+  (to_char(current_date, 'YYYY-MM'), 'gojek_grab', 'semua',           60000000),
+  (to_char(current_date, 'YYYY-MM'), 'paper',      'semua',           60000000)
+on conflict (month, source, branch) do update set revenue_target = excluded.revenue_target;
+
+select month, source, branch, revenue_target from targets order by source, branch;

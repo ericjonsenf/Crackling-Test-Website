@@ -256,19 +256,21 @@
       return res.data || [];
     },
 
-    // --- target omzet bulanan per cabang ---
+    // --- target omzet bulanan ---
+    // Kunci map: 'sumber|cabang', mis. 'esb|gading_serpong' atau 'paper|semua'
     async getTargets(month) {
       var map = {};
-      BRANCHES.forEach(function (b) { map[b.key] = 0; });
       var res = await sb.from('targets').select('*').eq('month', month);
       (res.data || []).forEach(function (r) {
-        if (map[r.branch] !== undefined) map[r.branch] = Number(r.revenue_target) || 0;
+        map[r.source + '|' + r.branch] = Number(r.revenue_target) || 0;
       });
       return map;
     },
-    async saveTarget(month, branch, amount) {
-      return await sb.from('targets')
-        .upsert({ month: month, branch: branch, revenue_target: amount }, { onConflict: 'month,branch' });
+    async saveTarget(month, source, branch, amount) {
+      return await sb.from('targets').upsert(
+        { month: month, source: source, branch: branch, revenue_target: amount },
+        { onConflict: 'month,source,branch' }
+      );
     }
   };
 
@@ -705,6 +707,25 @@
   }
 
   // ---------- target vs realisasi ----------
+  // Bentuk target mengikuti cara Crackling menetapkannya:
+  //   Dine-in (ESB) dipecah per cabang; Gojek/Grab dan Paper targetnya total.
+  var TARGET_ROWS = [
+    { key: 'esb|gading_serpong', source: 'esb', branch: 'gading_serpong', label: 'Dine-in — Gading Serpong', color: '#c1440e' },
+    { key: 'esb|kelapa_gading', source: 'esb', branch: 'kelapa_gading', label: 'Dine-in — Kelapa Gading', color: '#d99208' },
+    { key: 'gojek_grab|semua', source: 'gojek_grab', branch: 'semua', label: 'Gojek / Grab', color: '#4f7a36' },
+    { key: 'paper|semua', source: 'paper', branch: 'semua', label: 'Paper', color: '#2f6fb5' }
+  ];
+
+  // Realisasi untuk satu baris target, dijumlahkan dari data penjualan.
+  function realisasiTarget(row, dates, sales) {
+    return dates.reduce(function (a, d) {
+      if (row.branch === 'semua') {
+        return a + BRANCHES.reduce(function (s, b) { return s + sales[d][b.key][row.source]; }, 0);
+      }
+      return a + sales[d][row.branch][row.source];
+    }, 0);
+  }
+
   // Target dipasang per bulan, jadi kartunya mengikuti bulan tempat tanggal
   // akhir rentang berada — pilih "bulan lalu", yang tampil target bulan lalu.
   async function renderTarget() {
@@ -717,20 +738,21 @@
     var awalBulan = dateStr(new Date(y, m, 1));
     var akhirBulan = dateStr(new Date(y, m + 1, 0));
     var jmlHari = new Date(y, m + 1, 0).getDate();
+    var hariBulan = datesBetween(awalBulan, akhirBulan);
 
     var target = await DB.getTargets(mk);
-    var sales = await DB.getSales(datesBetween(awalBulan, akhirBulan));
+    var sales = await DB.getSales(hariBulan);
 
-    var realisasi = {};
-    BRANCHES.forEach(function (b) {
-      realisasi[b.key] = datesBetween(awalBulan, akhirBulan)
-        .reduce(function (a, d) { return a + branchTotal(sales[d][b.key]); }, 0);
+    var baris = TARGET_ROWS.map(function (r) {
+      var t = target[r.key] || 0;
+      var real = realisasiTarget(r, hariBulan, sales);
+      return { row: r, target: t, real: real, pct: t ? Math.round((real / t) * 100) : 0 };
     });
 
-    var totTarget = BRANCHES.reduce(function (a, b) { return a + target[b.key]; }, 0);
-    var totReal = BRANCHES.reduce(function (a, b) { return a + realisasi[b.key]; }, 0);
+    var totTarget = baris.reduce(function (a, x) { return a + x.target; }, 0);
+    var totReal = baris.reduce(function (a, x) { return a + x.real; }, 0);
 
-    // hari yang sudah lewat di bulan itu — kalau bulan lampau, seluruhnya
+    // hari yang sudah berjalan di bulan itu — kalau bulan lampau, seluruhnya
     var hariLewat = (dateStr() > akhirBulan) ? jmlHari
       : (dateStr() < awalBulan ? 0 : new Date().getDate());
     var sisaHari = Math.max(0, jmlHari - hariLewat);
@@ -739,18 +761,19 @@
 
     if (!totTarget) {
       box.innerHTML = '<p class="sub" style="margin:0">Target bulan ' + monthName(y, m) +
-        ' belum diisi. Isi di bawah supaya dashboard bisa menghitung progres dan sisa kejaran per hari.</p>';
+        ' belum diisi. Isi di halaman Penjualan supaya dashboard bisa menghitung progres dan sisa kejaran per hari.</p>';
     } else {
       var pctAll = Math.round((totReal / totTarget) * 100);
       var kurang = totTarget - totReal;
       var perHari = sisaHari ? kurang / sisaHari : 0;
-      var lajuSekarang = hariLewat ? totReal / hariLewat : 0;
-      var proyeksi = Math.round(lajuSekarang * jmlHari);
+      var laju = hariLewat ? totReal / hariLewat : 0;
+      var proyeksi = Math.round(laju * jmlHari);
       var onTrack = proyeksi >= totTarget;
 
       box.innerHTML =
         '<div class="split" style="margin-bottom:16px">' +
-          '<div class="tile"><div class="label">Target bulan ini</div><div class="value num">' + rupiah(totTarget) + '</div></div>' +
+          '<div class="tile"><div class="label">Target bulan ini</div><div class="value num">' + rupiah(totTarget) + '</div>' +
+            '<div class="hint">gabungan semua sumber</div></div>' +
           '<div class="tile"><div class="label">Tercapai</div><div class="value num">' + rupiah(totReal) + '</div>' +
             '<div class="hint ' + (pctAll >= 100 ? 'up' : '') + '">' + pctAll + '% dari target</div></div>' +
           '<div class="tile' + (kurang > 0 ? '' : ' accent') + '"><div class="label">' +
@@ -760,49 +783,51 @@
             '<div class="value num">' + rupiah(proyeksi) + '</div>' +
             '<div class="hint ' + (onTrack ? 'up' : 'down') + '">' + (onTrack ? 'di jalur yang benar' : 'berisiko meleset') + '</div></div>' +
         '</div>' +
-        '<div class="progress' + (pctAll >= 100 ? '' : '') + '" aria-hidden="true"><div class="fill" style="width:' +
-          Math.min(100, pctAll) + '%;background:' + (pctAll >= 100 ? 'var(--herb)' : 'var(--kriuk)') + '"></div></div>' +
+        '<div class="progress" aria-hidden="true"><div class="fill" style="width:' + Math.min(100, pctAll) +
+          '%;background:' + (pctAll >= 100 ? 'var(--herb)' : 'var(--kriuk)') + '"></div></div>' +
         '<p class="sub" style="margin-top:10px">' +
           (kurang <= 0
             ? 'Target bulan ini sudah tercapai, lebih ' + rupiah(-kurang) + '.'
             : (sisaHari
                 ? 'Perlu <strong>' + rupiah(Math.round(perHari)) + ' per hari</strong> selama ' + sisaHari +
-                  ' hari tersisa. Laju sekarang ' + rupiah(Math.round(lajuSekarang)) + '/hari.'
+                  ' hari tersisa. Laju sekarang <strong>' + rupiah(Math.round(laju)) + '/hari</strong>.'
                 : 'Bulan sudah berakhir dengan kekurangan ' + rupiah(kurang) + '.')) +
         '</p>' +
-        '<p class="group-label">Per cabang</p>' +
-        '<div class="brk">' + BRANCHES.map(function (b) {
-          var t = target[b.key], r = realisasi[b.key];
-          var p = t ? Math.round((r / t) * 100) : 0;
+        '<p class="group-label">Per sumber</p>' +
+        '<div class="brk">' + baris.map(function (x) {
+          var sisaIni = x.target - x.real;
           return '<div class="r">' +
-            '<span class="swatch" style="background:' + b.color + '"></span>' +
-            '<span class="nm">' + b.label + (t ? '' : ' <span class="flat">(target belum diisi)</span>') + '</span>' +
-            '<span class="vl">' + rupiah(r) + (t ? ' / ' + rupiahShort(t) : '') + '</span>' +
-            '<span class="pc ' + (p >= 100 ? 'up' : '') + '">' + (t ? p + '%' : '–') + '</span>' +
-            '<span class="bar"><i style="width:' + Math.min(100, p) + '%;background:' +
-              (p >= 100 ? 'var(--herb)' : b.color) + '"></i></span>' +
+            '<span class="swatch" style="background:' + x.row.color + '"></span>' +
+            '<span class="nm">' + x.row.label + (x.target ? '' : ' <span class="flat">(belum ada target)</span>') + '</span>' +
+            '<span class="vl">' + rupiahShort(x.real) + (x.target ? ' / ' + rupiahShort(x.target) : '') + '</span>' +
+            '<span class="pc ' + (x.pct >= 100 ? 'up' : '') + '">' + (x.target ? x.pct + '%' : '–') + '</span>' +
+            '<span class="bar"><i style="width:' + Math.min(100, x.pct) + '%;background:' +
+              (x.pct >= 100 ? 'var(--herb)' : x.row.color) + '"></i></span>' +
+            (x.target && sisaIni > 0 && sisaHari
+              ? '<span class="pc flat" style="grid-column:2/-1;text-align:left;width:auto;font-size:11.5px">kurang ' +
+                rupiahShort(sisaIni) + ' · butuh ' + rupiahShort(Math.round(sisaIni / sisaHari)) + '/hari</span>'
+              : '') +
             '</div>';
         }).join('') + '</div>';
     }
 
     // isi form dengan target yang sedang berlaku
-    BRANCHES.forEach(function (b) {
-      var inp = document.getElementById('tg-' + b.key);
-      if (inp) inp.value = target[b.key] || '';
+    TARGET_ROWS.forEach(function (r) {
+      var inp = document.getElementById('tg-' + r.source + '-' + r.branch);
+      if (inp) inp.value = target[r.key] || '';
     });
     var lab = document.getElementById('tg-month-label');
     if (lab) lab.textContent = monthName(y, m);
   }
 
   function wireTarget() {
-    var form = document.getElementById('target-form');
-    if (!form) return;
+    if (!document.getElementById('target-form')) return;
     onSubmit('target-form', async function () {
       var mk = dTo.slice(0, 7);
-      for (var i = 0; i < BRANCHES.length; i++) {
-        var b = BRANCHES[i];
-        var v = Number(document.getElementById('tg-' + b.key).value) || 0;
-        var res = await DB.saveTarget(mk, b.key, v);
+      for (var i = 0; i < TARGET_ROWS.length; i++) {
+        var r = TARGET_ROWS[i];
+        var v = Number(document.getElementById('tg-' + r.source + '-' + r.branch).value) || 0;
+        var res = await DB.saveTarget(mk, r.source, r.branch, v);
         if (res && res.error) { say('target-saved', 'Gagal: ' + res.error.message); return; }
       }
       say('target-saved', 'Target tersimpan');

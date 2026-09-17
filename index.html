@@ -509,12 +509,20 @@
         </div>
         <form class="row" id="target-form" style="margin-top:0;padding-top:0;border-top:0">
           <div>
-            <label for="tg-gading_serpong">Gading Serpong</label>
-            <input type="number" id="tg-gading_serpong" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
+            <label for="tg-esb-gading_serpong">Dine-in Gading Serpong <span class="hintlabel">(ESB)</span></label>
+            <input type="number" id="tg-esb-gading_serpong" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
           </div>
           <div>
-            <label for="tg-kelapa_gading">Kelapa Gading</label>
-            <input type="number" id="tg-kelapa_gading" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
+            <label for="tg-esb-kelapa_gading">Dine-in Kelapa Gading <span class="hintlabel">(ESB)</span></label>
+            <input type="number" id="tg-esb-kelapa_gading" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="tg-gojek_grab-semua">Gojek / Grab <span class="hintlabel">(gabungan)</span></label>
+            <input type="number" id="tg-gojek_grab-semua" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="tg-paper-semua">Paper <span class="hintlabel">(gabungan)</span></label>
+            <input type="number" id="tg-paper-semua" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
           </div>
           <div><button class="btn-primary" type="submit">Simpan target</button></div>
         </form>
@@ -788,9 +796,9 @@
      Tracking Prevention (Edge/Safari) memblokir akses localStorage untuk skrip
      dari domain lain, sehingga sesi login gagal tersimpan dan pengguna terlempar
      balik ke layar masuk. -->
-<script src="vendor/supabase.js?v=10"></script>
+<script src="vendor/supabase.js?v=11"></script>
 <!-- ?v= dinaikkan tiap kali app.js berubah, supaya browser tidak memakai versi lama -->
-<script src="config.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="config.js?v=11"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
