@@ -186,16 +186,31 @@ create policy "jadwal: hapus" on work_items for delete
   using (user_id = auth.uid() or sees_money());
 
 -- ------------------------------------------------------------
--- 4. SETELAH INI
---    a. Buat akun di Authentication -> Users -> Add user
---       (isi email + password, centang Auto Confirm User)
---    b. Untuk tiap akun, jalankan satu baris di bawah dengan
---       email dan peran yang sesuai:
+-- 4. SETELAH INI — BUAT AKUN
+--
+--    Tim login pakai USERNAME saja. Supabase tetap menyimpannya sebagai email,
+--    jadi saat membuat akun tulis: username@crackling.id
+--    Tidak ada email yang dikirim ke alamat itu; hanya label internal.
+--
+--    a. Authentication -> Users -> Add user
+--       Email    : sulthan@crackling.id     (orangnya cukup mengetik "sulthan")
+--       Password : bebas
+--       CENTANG "Auto Confirm User" — kalau tidak, akunnya tidak bisa dipakai.
+--
+--    b. Tetapkan peran untuk tiap akun, satu perintah per orang:
 --
 --    insert into profiles (id, name, role)
---    select id, 'Nama Orang', 'owner' from auth.users where email = 'email@nya.com';
+--    select id, 'Eric', 'owner' from auth.users where email = 'eric@crackling.id';
+--
+--    insert into profiles (id, name, role)
+--    select id, 'Sulthan', 'lead' from auth.users where email = 'sulthan@crackling.id';
 --
 --    Peran yang tersedia: 'owner', 'lead', 'ads', 'social'
---    Ganti peran nanti:
---    update profiles set role = 'lead' where id = (select id from auth.users where email = 'email@nya.com');
+--
+--    Ganti peran seseorang:
+--    update profiles set role = 'lead'
+--    where id = (select id from auth.users where email = 'sulthan@crackling.id');
+--
+--    Lihat siapa saja yang sudah punya peran:
+--    select p.name, p.role, u.email from profiles p join auth.users u on u.id = p.id;
 -- ------------------------------------------------------------

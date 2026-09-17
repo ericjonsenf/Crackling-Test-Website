@@ -16,6 +16,13 @@
     social: { money: false, ads: false, social: true, allWork: false }
   };
   var ROLE_LABEL = { owner: 'Owner', lead: 'Marketing Lead', ads: 'Crew Ads', social: 'Crew Social Media' };
+  // Supabase mewajibkan format email. Tim cukup mengetik username; domain ini
+  // ditempelkan otomatis dan tidak pernah dikirimi email apa pun.
+  var LOGIN_DOMAIN = '@crackling.id';
+  function toEmail(v) {
+    v = String(v).trim().toLowerCase();
+    return v.indexOf('@') === -1 ? v + LOGIN_DOMAIN : v;
+  }
   var me = null;   // { id, name, role }
   var perm = PERMS.social;
 
@@ -1134,13 +1141,13 @@
       var btn = e.target.querySelector('button[type=submit]');
       btn.disabled = true;
       var res = await Auth.signIn(
-        document.getElementById('login-email').value.trim(),
+        toEmail(document.getElementById('login-email').value),
         document.getElementById('login-password').value
       );
       btn.disabled = false;
       if (res.error) {
         showLogin(res.error.message === 'Invalid login credentials'
-          ? 'Email atau password salah.' : res.error.message);
+          ? 'Username atau password salah.' : res.error.message);
         return;
       }
       boot();
