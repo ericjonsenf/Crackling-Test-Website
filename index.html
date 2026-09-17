@@ -3,600 +3,594 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crackling — Marketing Dashboard</title>
-<meta name="description" content="Crackling pulls spend, reach and conversions from every channel into one live screen, so marketing teams react in minutes, not after the weekly report.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#faf6f0">
+<title>Papan Marketing Crackling</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%93%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --char-crust:#241708;
-    --char-crust-2:#1a1005;
-    --kriuk:#D99208;
-    --kriuk-light:#F0B23C;
-    --ember:#C1440E;
-    --cream:#F7F1E4;
-    --cream-dim:#C9BFA9;
-    --herb:#5B863F;
-    --line:#3A2A17;
+    color-scheme:light;
+    --paper:#faf6f0;
+    --surface:#ffffff;
+    --ink:#241708;
+    --ink-soft:#7d6c58;
+    --ink-faint:#a89880;
+    --line:#ece3d6;
+    --ember:#c1440e;
+    --ember-soft:#fbeee7;
+    --kriuk:#d99208;
+    --herb:#4f7a36;
+    --shadow:0 1px 2px rgba(60,40,15,.04), 0 8px 24px -16px rgba(60,40,15,.28);
   }
-  *{ scrollbar-color: var(--kriuk) var(--char-crust-2); }
-  html{ scroll-behavior:smooth; }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
   body{
-    background:var(--char-crust);
-    color:var(--cream);
-    font-family:'Plus Jakarta Sans', sans-serif;
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;
-  }
-  .font-display{ font-family:'Baloo 2', sans-serif; }
-  .font-mono{ font-family:'JetBrains Mono', monospace; }
-
-  .tracking-tightish{ letter-spacing:-0.03em; }
-  .leading-relaxed-body{ line-height:1.75; }
-
-  .grain{
-    position:relative;
-  }
-  .grain::before{
-    content:"";
-    position:absolute; inset:0;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-    pointer-events:none;
-    opacity:0.6;
-    z-index:0;
+    line-height:1.55;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:rgba(193,68,14,.12);
   }
 
-  .btn-primary{
-    background:linear-gradient(135deg, var(--kriuk-light), var(--ember));
-    box-shadow:0 1px 0 rgba(255,255,255,0.25) inset, 0 10px 24px -10px rgba(193,68,14,0.65);
-    transition:transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s cubic-bezier(.2,.8,.2,1);
-  }
-  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 1px 0 rgba(255,255,255,0.3) inset, 0 16px 30px -10px rgba(193,68,14,0.75); }
-  .btn-primary:active{ transform:translateY(0); }
-  .btn-primary:focus-visible{ outline:2px solid var(--cream); outline-offset:3px; }
+  h1,h2,h3{ font-family:'Baloo 2',system-ui,sans-serif; letter-spacing:-.01em; margin:0; text-wrap:balance; }
+  h1{ font-size:23px; font-weight:700; line-height:1.2; }
+  h2{ font-size:19px; font-weight:700; }
+  h3{ font-size:15px; font-weight:700; }
+  .num{ font-family:'JetBrains Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
 
-  .btn-ghost{
-    border:1px solid rgba(247,241,228,0.28);
-    transition:border-color .18s ease, background-color .18s ease, transform .18s ease;
+  .skip{
+    position:absolute; left:-9999px; top:8px; z-index:99;
+    background:var(--ink); color:#fff; padding:10px 16px; border-radius:9px; font-size:14px; font-weight:600;
   }
-  .btn-ghost:hover{ border-color:rgba(247,241,228,0.55); background-color:rgba(247,241,228,0.06); transform:translateY(-2px); }
-  .btn-ghost:focus-visible{ outline:2px solid var(--cream); outline-offset:3px; }
+  .skip:focus{ left:16px; }
 
-  .nav-link{ position:relative; color:var(--cream-dim); }
-  .nav-link::after{
-    content:""; position:absolute; left:0; right:0; bottom:-4px; height:1px;
-    background:var(--kriuk-light); transform:scaleX(0); transform-origin:left;
-    transition:transform .25s cubic-bezier(.2,.8,.2,1);
-  }
-  .nav-link:hover{ color:var(--cream); }
-  .nav-link:hover::after{ transform:scaleX(1); }
-  .nav-link:focus-visible{ outline:2px solid var(--cream); outline-offset:4px; }
+  /* ---------- kerangka + sidebar ---------- */
+  .shell{ display:flex; align-items:flex-start; gap:22px; max-width:1240px; margin:0 auto; padding:22px 16px 64px; }
 
-  .card-base{
-    background:linear-gradient(180deg, rgba(247,241,228,0.05), rgba(247,241,228,0.02));
-    border:1px solid var(--line);
+  .sidebar{
+    width:212px; flex:none; position:sticky; top:22px;
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); padding:16px 12px;
   }
-  .card-elevated{
-    background:var(--char-crust-2);
-    border:1px solid var(--line);
-    box-shadow:0 20px 40px -18px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.03) inset;
+  .brand{ display:flex; align-items:center; gap:10px; padding:2px 8px 14px; }
+  .brand .mark{
+    width:32px; height:32px; border-radius:9px; flex:none;
+    background:linear-gradient(135deg,var(--ember),var(--kriuk));
+    display:grid; place-items:center; color:#fff; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px;
   }
-  .card-floating{
-    background:var(--cream);
-    color:var(--char-crust-2);
-    box-shadow:0 22px 40px -14px rgba(0,0,0,0.55);
-  }
+  .brand .txt{ min-width:0; }
+  .brand .txt b{ display:block; font-family:'Baloo 2',sans-serif; font-size:15px; line-height:1.2; }
+  .brand .txt span{ display:block; font-size:11px; color:var(--ink-faint); }
 
-  .feature-panel{
-    transition:transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s cubic-bezier(.2,.8,.2,1), border-color .2s ease;
+  nav.side{ display:flex; flex-direction:column; gap:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:11px;
+    padding:10px 11px; border-radius:10px;
+    color:var(--ink-soft); text-decoration:none; font-size:14px; font-weight:500;
+    transition:background-color .14s, color .14s;
   }
-  .feature-panel:hover{
-    transform:translateY(-4px);
-    box-shadow:0 24px 44px -20px rgba(0,0,0,0.6);
-    border-color:rgba(217,146,8,0.4);
-  }
+  .nav-item svg{ flex:none; }
+  .nav-item:hover{ background:#fbf7f1; color:var(--ink); }
+  .nav-item[aria-current=page]{ background:var(--ember-soft); color:var(--ember); font-weight:700; }
+  .nav-item:focus-visible{ outline:2px solid var(--kriuk); outline-offset:2px; }
+  .side-foot{ margin-top:14px; padding:10px 11px 2px; border-top:1px solid var(--line); font-size:11px; color:var(--ink-faint); }
 
-  .chip{
-    border:1px solid var(--line);
-    color:var(--cream-dim);
-  }
+  .content{ flex:1; min-width:0; }
+  .page-head{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
 
-  .delta-up{ color:var(--herb); }
-  .delta-down{ color:var(--ember); }
+  /* ---------- kartu & elemen umum ---------- */
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:18px; }
+  .card-head{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:16px; }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:2px 0 0; }
+  .group-label{ font-size:12px; color:var(--ink-faint); font-weight:600; margin:22px 0 9px; }
 
-  @keyframes drawline{
-    from{ stroke-dashoffset:520; }
-    to{ stroke-dashoffset:0; }
-  }
-  @keyframes popin{
-    0%{ opacity:0; transform:translateY(10px) rotate(-4deg) scale(.96); }
-    100%{ opacity:1; transform:translateY(0) rotate(-3deg) scale(1); }
-  }
-  .chart-line{
-    stroke-dasharray:520;
-    stroke-dashoffset:520;
-    animation:drawline 1.6s 0.3s cubic-bezier(.2,.8,.2,1) forwards;
-  }
-  .floating-chip, .pop-in{
-    animation:popin .6s 1.1s cubic-bezier(.2,.8,.2,1) forwards;
-    opacity:0;
-  }
+  .hero-num{ font-size:32px; font-weight:700; line-height:1.1; letter-spacing:-.02em; }
+  .delta{ font-size:13px; font-weight:600; }
+  .up{ color:var(--herb); } .down{ color:var(--ember); } .flat{ color:var(--ink-faint); }
 
-  @media (prefers-reduced-motion: reduce){
-    .chart-line{ animation:none; stroke-dashoffset:0; }
-    .floating-chip, .pop-in{ animation:none; opacity:1; transform:none; }
-    html{ scroll-behavior:auto; }
-    .btn-primary, .btn-ghost, .feature-panel{ transition:none; }
-  }
+  .split{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .tile{ border:1px solid var(--line); border-radius:11px; padding:13px 14px; background:#fffdfa; }
+  .tile .label{ font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:7px; }
+  .tile .value{ font-size:18px; font-weight:700; margin-top:5px; }
+  .tile .hint{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .tile.accent{ background:#fdf6e6; border-color:#f0dfb8; }
+  .tile.warn{ background:var(--ember-soft); border-color:#f4d9cc; }
+  .swatch{ width:9px; height:9px; border-radius:3px; flex:none; }
 
-  .cta-band{
-    background:linear-gradient(120deg, var(--ember), var(--kriuk));
-  }
+  .chartbox svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .legend{ display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--ink-soft); margin-top:12px; }
+  .legend span{ display:flex; align-items:center; gap:7px; }
+  .legend .dash{ width:15px; height:0; border-top:2px dashed var(--ink); flex:none; }
 
-  ::selection{ background:var(--kriuk); color:var(--char-crust-2); }
+  .two-col{ display:grid; gap:18px; grid-template-columns:auto 1fr; align-items:center; }
+  .donut-legend{ display:grid; gap:9px; }
+  .donut-legend .r{ display:flex; align-items:center; gap:9px; font-size:13px; }
+  .donut-legend .r .nm{ flex:1; color:var(--ink-soft); min-width:0; }
+  .donut-legend .r .vl{ font-weight:700; }
+  .donut-legend .r .pc{ color:var(--ink-faint); width:38px; text-align:right; font-size:12px; }
+
+  .progress{ height:12px; border-radius:99px; background:#f2ebe0; overflow:hidden; margin-top:10px; }
+  .progress .fill{ height:100%; border-radius:99px; background:var(--kriuk); }
+  .progress.over .fill{ background:var(--ember); }
+
+  /* ---------- form ---------- */
+  form.row{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); align-items:end; margin-top:22px; padding-top:18px; border-top:1px dashed var(--line); }
+  #ads-form{ grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) minmax(170px,2fr) auto; }
+  #budget-form{ grid-template-columns:1fr auto; margin-top:14px; padding-top:0; border-top:0; }
+  #work-form{ grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) auto; margin-top:16px; }
+  label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:500; }
+  input[type=date], input[type=number], input[type=text], select{
+    width:100%; font:inherit; font-size:15px; color:var(--ink);
+    background:#fffdfa; border:1px solid var(--line); border-radius:9px; padding:10px 11px;
+  }
+  input[type=number]{ font-family:'JetBrains Mono',monospace; }
+  input:hover, select:hover{ border-color:#ddd0bd; }
+  input:focus-visible, button:focus-visible, select:focus-visible, a:focus-visible{ outline:2px solid var(--kriuk); outline-offset:2px; }
+
+  button{
+    font:inherit; font-weight:600; font-size:15px; cursor:pointer;
+    border:1px solid transparent; border-radius:9px; padding:10px 16px;
+    transition:transform .14s cubic-bezier(.2,.8,.2,1), background-color .14s, border-color .14s, opacity .14s;
+  }
+  button[disabled]{ opacity:.55; cursor:progress; }
+  .btn-primary{ background:var(--ember); color:#fff; width:100%; }
+  .btn-primary:hover:not([disabled]){ background:#a93a0c; transform:translateY(-1px); }
+  .btn-primary:active:not([disabled]){ transform:translateY(0); }
+  .btn-quiet{ background:#fffdfa; border-color:var(--line); color:var(--ink-soft); padding:7px 13px; font-size:13px; }
+  .btn-quiet:hover{ border-color:#ddd0bd; color:var(--ink); }
+  .btn-quiet[aria-pressed=true]{ background:var(--ink); border-color:var(--ink); color:#fff; }
+  .btn-copy{ background:var(--ink); color:#fff; padding:8px 15px; font-size:13.5px; }
+  .btn-copy:hover{ background:#3a2712; transform:translateY(-1px); }
+  .seg-group{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  .facts{ margin-top:16px; font-size:13.5px; color:var(--ink-soft); display:grid; gap:5px; }
+  .facts strong{ color:var(--ink); }
+  .roas-line{ font-size:13.5px; color:var(--ink-soft); margin-top:14px; }
+  .roas-line strong{ color:var(--ink); }
+
+  .hintlabel{ color:var(--ink-faint); font-weight:400; }
+  .table-scroll{ overflow-x:auto; margin-top:4px; }
+  table.cmp{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
+  table.cmp th, table.cmp td{ padding:10px 12px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
+  table.cmp th{ font-size:11.5px; font-weight:600; color:var(--ink-faint); text-align:right; }
+  table.cmp th:first-child, table.cmp td:first-child{ text-align:left; }
+  table.cmp td{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+  table.cmp td:first-child{ font-family:'Plus Jakarta Sans',sans-serif; display:flex; align-items:center; gap:8px; }
+  table.cmp tbody tr:last-child td{ border-bottom:0; }
+  table.cmp tr.tot td{ font-weight:700; border-top:1px solid var(--line); }
+
+  ul.notes{ list-style:none; margin:14px 0 0; padding:0; }
+  ul.notes li{ display:flex; gap:11px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  ul.notes li:last-child{ border-bottom:0; }
+  ul.notes .when{ color:var(--ink-faint); flex:none; width:58px; font-size:12.5px; }
+  ul.notes .what{ min-width:0; overflow-wrap:anywhere; }
+
+  .social-grid{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); }
+  .social{ border:1px solid var(--line); border-radius:11px; padding:14px; background:#fffdfa; }
+  .social .name{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+  .social .count{ font-size:22px; font-weight:700; margin-top:8px; }
+  .social .meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .social .spark{ margin-top:10px; }
+  .social .spark svg{ width:100%; height:38px; display:block; }
+  .ico{ width:22px; height:22px; border-radius:6px; flex:none; }
+
+  /* ---------- kalender jadwal ---------- */
+  .cal-bar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .cal-bar .mname{ font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-dow{ text-align:center; font-size:11px; color:var(--ink-faint); font-weight:600; padding-bottom:2px; }
+  .cal-cell{
+    border:1px solid var(--line); background:#fffdfa; border-radius:10px;
+    min-height:62px; padding:7px 6px 6px; text-align:left; width:100%;
+    display:flex; flex-direction:column; gap:4px; cursor:pointer;
+    font:inherit; color:var(--ink);
+    transition:border-color .14s, background-color .14s;
+  }
+  .cal-cell:hover{ border-color:#ddd0bd; background:#fdfaf5; }
+  .cal-cell.blank{ border:0; background:transparent; cursor:default; }
+  .cal-cell .dnum{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-soft); }
+  .cal-cell.today .dnum{ color:var(--ember); font-weight:700; }
+  .cal-cell.today{ border-color:#f0c9b7; }
+  .cal-cell[aria-pressed=true]{ border-color:var(--ember); background:var(--ember-soft); }
+  .cal-cell .dots{ display:flex; gap:3px; flex-wrap:wrap; }
+  .cal-cell .dot{ width:6px; height:6px; border-radius:50%; background:var(--kriuk); }
+  .cal-cell .dot.long{ background:var(--herb); }
+  .cal-cell .dot.done{ background:#ddd0bd; }
+  .cal-cell .more{ font-size:10px; color:var(--ink-faint); }
+
+  ul.work{ list-style:none; margin:0; padding:0; }
+  ul.work li{ display:flex; align-items:flex-start; gap:11px; padding:11px 0; border-bottom:1px solid var(--line); }
+  ul.work li:last-child{ border-bottom:0; }
+  ul.work input[type=checkbox]{ width:20px; height:20px; accent-color:var(--herb); flex:none; cursor:pointer; margin-top:2px; }
+  ul.work .body{ flex:1; min-width:0; }
+  ul.work .t{ font-size:14.5px; overflow-wrap:anywhere; }
+  ul.work .m{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+  ul.work .done .t{ text-decoration:line-through; color:var(--ink-faint); }
+  .chip{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:99px; }
+  .chip.pendek{ background:#fdf6e6; color:#8a6205; }
+  .chip.panjang{ background:#eaf3e4; color:var(--herb); }
+  .chip.late{ background:var(--ember-soft); color:var(--ember); }
+  .del{ background:none; border:0; color:var(--ink-faint); font-size:19px; line-height:1; padding:5px 9px; border-radius:7px; }
+  .del:hover{ color:var(--ember); background:var(--ember-soft); }
+
+  .banner{ background:#fdf6e6; border:1px solid #f0dfb8; color:#7a5c12; font-size:12.5px; border-radius:10px; padding:9px 13px; margin-bottom:18px; }
+  .empty{ color:var(--ink-faint); font-size:13.5px; padding:14px 0; display:block; }
+  .saved{ font-size:12.5px; color:var(--herb); font-weight:600; opacity:0; transition:opacity .2s; display:block; margin-top:8px; }
+  .saved.show{ opacity:1; }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  @media (max-width:900px){
+    /* align-items:stretch penting — kalau flex-start, kolom ikut melebar mengikuti tabel */
+    .shell{ flex-direction:column; align-items:stretch; gap:14px; padding-top:14px; }
+    .sidebar{ width:100%; position:static; padding:12px; min-width:0; }
+    .content{ width:100%; min-width:0; }
+    .brand{ padding-bottom:10px; }
+    nav.side{ flex-direction:row; overflow-x:auto; gap:6px; padding-bottom:2px; }
+    .nav-item{ flex:none; padding:9px 12px; font-size:13.5px; white-space:nowrap; }
+    .side-foot{ display:none; }
+  }
+  @media (max-width:640px){
+    .two-col{ grid-template-columns:1fr; justify-items:center; }
+    .donut-legend{ width:100%; }
+  }
+  @media (max-width:560px){
+    h1{ font-size:20px; }
+    .hero-num{ font-size:27px; }
+    .card{ padding:16px; border-radius:12px; }
+    form.row, #ads-form, #budget-form, #work-form{ grid-template-columns:1fr; }
+    .cal-cell{ min-height:50px; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } }
 </style>
 </head>
-<body class="antialiased">
+<body>
+<a href="#main" class="skip">Lompat ke konten</a>
 
-  <!-- NAV -->
-  <header class="sticky top-0 z-40 backdrop-blur bg-[#241708]/85 border-b border-[color:var(--line)]">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
-      <a href="#top" class="flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--cream)] focus-visible:outline-offset-4 rounded">
-        <img src="Brand_Assets/LOGO.png" alt="Crackling" class="h-9 w-9 rounded-full">
-        <span class="font-display font-semibold text-lg tracking-tightish">Crackling</span>
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">C</span>
+      <span class="txt"><b translate="no">Crackling</b><span>Papan Marketing</span></span>
+    </div>
+    <nav class="side" aria-label="Menu utama">
+      <a class="nav-item" href="#ringkasan" data-page="ringkasan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Ringkasan
       </a>
-      <nav class="hidden md:flex items-center gap-8 text-sm">
-        <a href="#product" class="nav-link">Product</a>
-        <a href="#features" class="nav-link">Fitur</a>
-        <a href="#pricing" class="nav-link">Harga</a>
-        <a href="#story" class="nav-link">Cerita kami</a>
-      </nav>
-      <div class="flex items-center gap-4">
-        <a href="#" class="hidden sm:inline nav-link text-sm">Masuk</a>
-        <a href="#pricing" class="btn-primary text-[#241708] text-sm font-semibold px-4 py-2 rounded-full">Mulai gratis</a>
-      </div>
-    </div>
-  </header>
-
-  <!-- HERO -->
-  <section id="top" class="relative overflow-hidden">
-    <div class="max-w-3xl mx-auto px-6 md:px-8 pt-16 md:pt-24 text-center">
-      <p class="font-mono text-xs text-[color:var(--kriuk-light)] mb-5">Dashboard marketing untuk tim yang gerak cepat</p>
-      <h1 class="font-display font-bold text-[2.4rem] leading-[1.08] md:text-6xl md:leading-[1.05] tracking-tightish">
-        Tahu persis saat kampanye kamu mulai bekerja.
-      </h1>
-      <p class="mt-6 text-base md:text-lg text-[color:var(--cream-dim)] leading-relaxed-body max-w-xl mx-auto">
-        Crackling menarik data spend, reach, dan konversi dari semua channel ke satu layar yang hidup — supaya tim kamu bisa bereaksi dalam hitungan menit, bukan menunggu laporan hari Senin.
-      </p>
-      <div class="mt-9 flex flex-wrap items-center justify-center gap-4">
-        <a href="#pricing" class="btn-primary text-[#241708] font-semibold px-6 py-3 rounded-full">Mulai gratis</a>
-        <a href="#story" class="btn-ghost text-[color:var(--cream)] font-medium px-6 py-3 rounded-full">Lihat cara kerjanya</a>
-      </div>
-      <p class="font-mono text-xs text-[color:var(--cream-dim)] mt-8">
-        Live dari Meta, TikTok, Google Ads &amp; 12 channel lainnya
-      </p>
-    </div>
-
-    <!-- product mockup -->
-    <div class="relative max-w-6xl mx-auto px-4 md:px-8 mt-14 md:mt-16 pb-20 md:pb-28">
-      <div class="absolute inset-x-10 top-10 h-64 md:h-80 rounded-full bg-[color:var(--kriuk)]/20 blur-[90px] pointer-events-none" aria-hidden="true"></div>
-
-      <div class="relative rounded-2xl md:rounded-[26px] bg-[#150d04] p-2 md:p-3 ring-1 ring-[color:var(--line)] shadow-[0_50px_100px_-30px_rgba(0,0,0,0.7)]">
-        <div class="rounded-xl md:rounded-2xl overflow-hidden bg-[#f4f2ec] text-[#20180f]">
-
-          <!-- browser chrome -->
-          <div class="flex items-center gap-3 px-4 py-2.5 bg-[#eae6dc] border-b border-black/5">
-            <div class="flex gap-1.5 shrink-0">
-              <span class="h-2.5 w-2.5 rounded-full bg-[#ec6a5f]"></span>
-              <span class="h-2.5 w-2.5 rounded-full bg-[#f4bf50]"></span>
-              <span class="h-2.5 w-2.5 rounded-full bg-[#61c454]"></span>
-            </div>
-            <div class="flex-1 flex justify-center min-w-0">
-              <div class="flex items-center gap-1.5 bg-white/70 text-[10px] md:text-[11px] text-black/50 rounded-full px-3 py-1 font-mono max-w-full truncate">
-                <span aria-hidden="true">🔒</span> app.crackling.id
-              </div>
-            </div>
-            <div class="hidden sm:flex items-center gap-3 text-black/40 shrink-0 font-mono text-xs">
-              <span aria-hidden="true">⌕</span>
-              <span aria-hidden="true">🔔</span>
-              <span class="h-5 w-5 rounded-full bg-[color:var(--kriuk)] text-white text-[9px] flex items-center justify-center">CJ</span>
-            </div>
-          </div>
-
-          <div class="flex items-stretch">
-            <!-- sidebar -->
-            <aside class="hidden md:flex md:flex-col w-[196px] shrink-0 border-r border-black/5 bg-[#faf9f5] p-4 gap-0.5 text-[12.5px]">
-              <p class="flex items-center gap-2 rounded-lg bg-white shadow-sm px-2.5 py-2 font-medium text-[#20180f] whitespace-nowrap">
-                <span class="h-1.5 w-1.5 rounded-full bg-[color:var(--kriuk)] shrink-0"></span> Ringkasan
-              </p>
-              <p class="flex items-center justify-between px-2.5 py-2 text-black/50">Kampanye <span>⌄</span></p>
-              <p class="flex items-center px-2.5 py-2 text-black/50">Kalender Konten</p>
-              <p class="flex items-center px-2.5 py-2 text-black/50">Sosial Media</p>
-              <p class="flex items-center justify-between px-2.5 py-2 text-black/50">Cabang <span>⌃</span></p>
-              <p class="pl-6 py-1.5 text-black/35 text-xs">Gading Serpong</p>
-              <p class="pl-6 py-1.5 text-black/35 text-xs">Kelapa Gading</p>
-              <p class="pl-6 py-1.5 text-black/35 text-xs mb-2">GoFood &amp; ShopeeFood</p>
-              <p class="flex items-center justify-between px-2.5 py-2 text-black/50">Laporan <span>⌄</span></p>
-              <p class="flex items-center justify-between px-2.5 py-2 text-black/50">Pengaturan <span>⌄</span></p>
-              <p class="mt-auto pt-4 font-mono text-[10px] text-black/30">Crackling.JKT</p>
-            </aside>
-
-            <!-- main -->
-            <div class="flex-1 min-w-0 p-4 md:p-5">
-              <div class="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-4 pb-4 mb-4 border-b border-black/5 font-mono">
-                <div><p class="text-[10px] text-black/40">Reach Konten</p><p class="text-sm font-semibold mt-0.5">48,2rb <span class="text-emerald-600 text-[11px]">+12%</span></p></div>
-                <div><p class="text-[10px] text-black/40">Pesanan Promo</p><p class="text-sm font-semibold mt-0.5">614 <span class="text-emerald-600 text-[11px]">+18%</span></p></div>
-                <div><p class="text-[10px] text-black/40">Spend Iklan</p><p class="text-sm font-semibold mt-0.5">Rp4,2jt <span class="text-emerald-600 text-[11px]">+6%</span></p></div>
-                <div><p class="text-[10px] text-black/40">Biaya / Pesanan</p><p class="text-sm font-semibold mt-0.5">Rp6.850 <span class="text-emerald-600 text-[11px]">-9%</span></p></div>
-                <div><p class="text-[10px] text-black/40">Engagement Rate</p><p class="text-sm font-semibold mt-0.5">7,4% <span class="text-emerald-600 text-[11px]">+1,1%</span></p></div>
-                <div><p class="text-[10px] text-black/40">Rating Gabungan</p><p class="text-sm font-semibold mt-0.5">4,7★ <span class="text-black/40 text-[11px]">stabil</span></p></div>
-              </div>
-
-              <div class="relative">
-                <div class="flex items-center gap-4 mb-2 font-mono text-[11px] text-black/50">
-                  <span class="font-sans font-medium text-black/70 mr-1">Tren 30 Hari</span>
-                  <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full" style="background:#C1440E"></span>Reach</span>
-                  <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full border" style="border-color:#D99208"></span>Pesanan</span>
-                  <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full border border-black/30"></span>Spend</span>
-                </div>
-                <svg viewBox="0 0 480 130" class="w-full h-24 md:h-28" fill="none">
-                  <line x1="0" y1="20" x2="480" y2="20" stroke="black" stroke-opacity="0.06" stroke-width="1"/>
-                  <line x1="0" y1="65" x2="480" y2="65" stroke="black" stroke-opacity="0.06" stroke-width="1"/>
-                  <line x1="0" y1="110" x2="480" y2="110" stroke="black" stroke-opacity="0.06" stroke-width="1"/>
-                  <line x1="300" y1="10" x2="300" y2="120" stroke="black" stroke-opacity="0.12" stroke-width="1" stroke-dasharray="3 3"/>
-                  <path d="M0,90 C 40,88 60,70 90,75 C 130,80 150,55 190,60 C 230,65 250,40 290,45 C 330,50 350,30 390,25 C 420,22 450,15 480,18"
-                        stroke="#D99208" stroke-width="2.5" stroke-linecap="round" class="chart-line"/>
-                  <path d="M0,100 C 40,95 60,85 90,88 C 130,92 150,60 190,50 C 230,42 250,68 290,58 C 330,50 350,40 390,20 C 420,10 450,14 480,6"
-                        stroke="#C1440E" stroke-width="2.5" stroke-linecap="round" class="chart-line" style="animation-delay:.45s"/>
-                  <path d="M0,95 C 60,92 120,90 190,86 C 250,82 320,78 390,72 C 430,68 460,66 480,64"
-                        stroke="black" stroke-opacity="0.25" stroke-width="2" stroke-linecap="round" class="chart-line" style="animation-delay:.15s"/>
-                  <circle cx="300" cy="45" r="3.5" fill="#C1440E"/>
-                </svg>
-                <div class="pop-in absolute left-[55%] top-0 bg-white rounded-lg shadow-lg px-3 py-2 font-mono text-[10px] leading-relaxed hidden sm:block">
-                  <p><span style="color:#C1440E">■</span> Reach <span class="text-emerald-600">+9,4%</span></p>
-                  <p><span style="color:#D99208">■</span> Pesanan <span class="text-emerald-600">+14%</span></p>
-                  <p><span class="text-black/30">■</span> Spend <span class="text-black/60">+2,1%</span></p>
-                </div>
-                <div class="flex justify-between font-mono text-[10px] text-black/35 mt-1">
-                  <span>AGU</span><span>SEP</span><span class="ml-[38%]"></span><span>OKT</span>
-                </div>
-              </div>
-
-              <!-- content queue: tablet & up -->
-              <div class="hidden md:block mt-6">
-                <div class="flex items-center gap-4 font-mono text-[11px] border-b border-black/5 pb-2 mb-3">
-                  <span class="font-sans font-semibold text-black/80 pb-1 border-b-2 border-[color:var(--kriuk)]">Antrian Konten</span>
-                  <span class="text-black/35">Platform</span>
-                  <span class="text-black/35 hidden lg:inline">Cabang</span>
-                  <span class="text-black/35 hidden lg:inline">Status</span>
-                </div>
-                <div class="space-y-2 font-mono text-[11px]">
-                  <div class="grid grid-cols-[80px_1fr_auto] lg:grid-cols-[80px_1fr_120px_auto] items-center gap-3 px-1 py-1">
-                    <span class="text-black/40">Hari ini, 11:00</span>
-                    <span class="truncate">IG Reels — Kriuk Setiap Gigitan</span>
-                    <span class="hidden lg:inline text-black/40">Gading Serpong</span>
-                    <span class="bg-amber-50 text-amber-700 rounded px-2 py-0.5 justify-self-end">PERLU APPROVAL</span>
-                  </div>
-                  <div class="grid grid-cols-[80px_1fr_auto] lg:grid-cols-[80px_1fr_120px_auto] items-center gap-3 px-1 py-1">
-                    <span class="text-black/40">Hari ini, 17:00</span>
-                    <span class="truncate">TikTok — Promo makan siang kantor</span>
-                    <span class="hidden lg:inline text-black/40">Kelapa Gading</span>
-                    <span class="bg-emerald-50 text-emerald-600 rounded px-2 py-0.5 justify-self-end">TERJADWAL</span>
-                  </div>
-                  <div class="grid grid-cols-[80px_1fr_auto] lg:grid-cols-[80px_1fr_120px_auto] items-center gap-3 px-1 py-1">
-                    <span class="text-black/40">Besok, 09:00</span>
-                    <span class="truncate">IG Feed — Menu baru: Kriuk Sambal Matah</span>
-                    <span class="hidden lg:inline text-black/40">Kedua cabang</span>
-                    <span class="bg-emerald-50 text-emerald-600 rounded px-2 py-0.5 justify-self-end">TERJADWAL</span>
-                  </div>
-
-                  <div class="rounded-lg border-l-2 border-[color:var(--kriuk)] bg-white shadow-sm p-3 mt-3">
-                    <div class="grid grid-cols-[80px_1fr_auto] lg:grid-cols-[80px_1fr_120px_auto] items-center gap-3">
-                      <span class="text-black/40">Jum, 12:30</span>
-                      <span class="font-sans font-medium truncate">Promo akhir pekan — bundling keluarga</span>
-                      <span class="hidden lg:inline text-black/40">Gading Serpong</span>
-                      <span class="bg-amber-50 text-amber-700 rounded px-2 py-0.5 justify-self-end">PERLU APPROVAL</span>
-                    </div>
-                    <div class="hidden lg:flex items-center justify-between mt-3 pt-3 border-t border-black/5">
-                      <div class="flex flex-wrap gap-1.5 items-center">
-                        <span class="bg-black/5 rounded px-2 py-0.5">Instagram Story</span>
-                        <span class="bg-black/5 rounded px-2 py-0.5">TikTok</span>
-                        <span class="text-black/40">Target reach 15rb · Budget Rp350rb</span>
-                      </div>
-                      <span class="flex items-center gap-1.5 shrink-0">
-                        <span class="h-5 w-5 rounded-full border-2 border-[color:var(--kriuk)] flex items-center justify-center text-[9px] font-semibold">92</span>
-                        Skor promo
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- right panel -->
-            <aside class="hidden xl:flex xl:flex-col w-[230px] shrink-0 border-l border-black/5 bg-[#faf9f5] p-4 gap-5">
-              <div>
-                <div class="flex items-center justify-between mb-3">
-                  <p class="font-sans text-sm font-semibold">Instagram</p>
-                  <span class="font-mono text-[10px] text-black/40">7H ⌄</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="font-mono text-[10px] text-black/40">Followers</p>
-                    <p class="font-mono text-sm font-semibold">18.340 <span class="text-emerald-600">+126</span></p>
-                  </div>
-                  <div class="h-9 w-9 rounded-full" style="background:conic-gradient(#C1440E 0 35%, #D99208 35% 100%)"></div>
-                </div>
-                <div class="mt-3 space-y-1.5 font-mono text-[11px] text-black/60">
-                  <div class="flex justify-between"><span>Suka</span><span class="text-black/80">1.284</span></div>
-                  <div class="flex justify-between"><span>Komentar</span><span class="text-black/80">96</span></div>
-                  <div class="flex justify-between"><span>Simpan</span><span class="text-black/80">742</span></div>
-                  <div class="flex justify-between"><span>Bagikan</span><span class="text-black/80">211</span></div>
-                </div>
-                <p class="font-mono text-[10px] text-black/40 mt-3 mb-1.5">Postingan Teratas</p>
-                <div class="grid grid-cols-4 gap-1.5">
-                  <div class="aspect-square rounded-md" style="background:linear-gradient(135deg,#D99208,#C1440E)"></div>
-                  <div class="aspect-square rounded-md bg-black/10"></div>
-                  <div class="aspect-square rounded-md" style="background:linear-gradient(135deg,#5B863F,#D99208)"></div>
-                  <div class="aspect-square rounded-md bg-black/20"></div>
-                </div>
-              </div>
-
-              <div class="pt-4 border-t border-black/5">
-                <div class="flex items-center justify-between mb-3">
-                  <p class="font-sans text-sm font-semibold">TikTok</p>
-                  <span class="font-mono text-[10px] text-black/40">7H ⌄</span>
-                </div>
-                <div class="relative">
-                  <p class="font-mono text-[10px] text-black/40">Followers</p>
-                  <p class="font-mono text-sm font-semibold">9.870 <span class="text-emerald-600">+340</span></p>
-                  <div class="pop-in absolute -top-1 left-20 bg-white rounded-lg shadow-lg px-3 py-2 font-mono text-[10px] w-32">
-                    <p class="font-sans font-medium text-black/70 mb-1">Video kriuk-nya</p>
-                    <p class="flex justify-between">Views <span class="text-emerald-600">62rb</span></p>
-                    <p class="flex justify-between">Share <span class="text-emerald-600">+184</span></p>
-                  </div>
-                </div>
-                <div class="flex items-end gap-1.5 h-10 mt-3">
-                  <div class="flex-1 rounded-full border border-black/15" style="height:35%"></div>
-                  <div class="flex-1 rounded-full border border-black/15" style="height:50%"></div>
-                  <div class="flex-1 rounded-full border border-black/15" style="height:42%"></div>
-                  <div class="flex-1 rounded-full border border-black/15" style="height:55%"></div>
-                  <div class="flex-1 rounded-full" style="height:100%; background:#C1440E"></div>
-                  <div class="flex-1 rounded-full border border-black/15" style="height:30%"></div>
-                  <div class="flex-1 rounded-full border border-black/15" style="height:38%"></div>
-                </div>
-                <div class="flex justify-between font-mono text-[9px] text-black/30 mt-1">
-                  <span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span>
-                </div>
-                <div class="mt-3 space-y-1.5 font-mono text-[11px] text-black/60">
-                  <div class="flex justify-between"><span>Views</span><span class="text-black/80">62.400 <span class="text-emerald-600">+48%</span></span></div>
-                  <div class="flex justify-between"><span>Eng. Rate</span><span class="text-black/80">9,1% <span class="text-emerald-600">+2,3%</span></span></div>
-                  <div class="flex justify-between"><span>Klik Menu</span><span class="text-black/80">318 <span class="text-emerald-600">+22%</span></span></div>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PROBLEM / NARRATIVE -->
-  <section id="product" class="border-t border-[color:var(--line)] grain">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 py-20 md:py-28 relative z-10">
-      <div class="max-w-2xl">
-        <h2 class="font-display font-semibold text-3xl md:text-4xl tracking-tightish leading-tight">
-          Hari marketing bergerak cepat. Dashboard kamu harusnya begitu juga.
-        </h2>
-        <p class="mt-6 text-[color:var(--cream-dim)] leading-relaxed-body">
-          Lima tab browser terbuka, spreadsheet yang diekspor manual tiap pagi, lalu menunggu deck mingguan dari agency. Pada saat angkanya sampai ke kamu, budget kampanye itu sudah habis duluan. Crackling gantikan semua itu dengan satu layar yang terus update, dari channel mana pun kamu pasang iklan.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- FEATURES BENTO -->
-  <section id="features" class="border-t border-[color:var(--line)]">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 py-20 md:py-28">
-      <h2 class="font-display font-semibold text-3xl md:text-4xl tracking-tightish max-w-xl">
-        Semua yang tim marketing perlu tahu, tanpa pindah tab.
-      </h2>
-
-      <div class="mt-12 grid md:grid-cols-3 gap-5">
-        <div class="feature-panel card-base rounded-3xl p-7 md:col-span-2 md:row-span-2">
-          <h3 class="font-display font-semibold text-xl mb-3">Satu layar, semua channel</h3>
-          <p class="text-[color:var(--cream-dim)] leading-relaxed-body mb-6 max-w-md">
-            Meta, TikTok, sampai data pesanan dari GoFood dan ShopeeFood — semuanya ditarik ke satu tampilan yang sama, diupdate tiap beberapa menit. Nggak perlu lagi buka lima dashboard berbeda buat jawab satu pertanyaan sederhana.
-          </p>
-          <div class="grid sm:grid-cols-2 gap-3 max-w-lg">
-            <div class="rounded-2xl bg-[#f4f2ec] text-[#20180f] p-4">
-              <div class="flex items-center justify-between mb-2">
-                <p class="font-sans text-xs font-semibold">Instagram</p>
-                <span class="font-mono text-[9px] text-black/40">7H</span>
-              </div>
-              <p class="font-mono text-[9px] text-black/40">Followers</p>
-              <p class="font-mono text-base font-semibold">18.340 <span class="text-emerald-600 text-[11px]">+126</span></p>
-              <div class="flex justify-between font-mono text-[10px] text-black/50 mt-2">
-                <span>Suka 1.284</span><span>Simpan 742</span>
-              </div>
-            </div>
-            <div class="rounded-2xl bg-[#f4f2ec] text-[#20180f] p-4">
-              <div class="flex items-center justify-between mb-2">
-                <p class="font-sans text-xs font-semibold">TikTok</p>
-                <span class="font-mono text-[9px] text-black/40">7H</span>
-              </div>
-              <p class="font-mono text-[9px] text-black/40">Followers</p>
-              <p class="font-mono text-base font-semibold">9.870 <span class="text-emerald-600 text-[11px]">+340</span></p>
-              <div class="flex items-end gap-1 h-6 mt-2">
-                <div class="flex-1 rounded-full border border-black/15" style="height:40%"></div>
-                <div class="flex-1 rounded-full border border-black/15" style="height:60%"></div>
-                <div class="flex-1 rounded-full" style="height:100%; background:#C1440E"></div>
-                <div class="flex-1 rounded-full border border-black/15" style="height:45%"></div>
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-2 mt-4">
-            <span class="chip font-mono text-xs rounded-full px-3 py-1.5">Meta Ads</span>
-            <span class="chip font-mono text-xs rounded-full px-3 py-1.5">TikTok Ads</span>
-            <span class="chip font-mono text-xs rounded-full px-3 py-1.5">GoFood</span>
-            <span class="chip font-mono text-xs rounded-full px-3 py-1.5">ShopeeFood</span>
-          </div>
-        </div>
-
-        <div class="feature-panel card-base rounded-3xl p-7">
-          <h3 class="font-display font-semibold text-xl mb-3">Alert sebelum sempat rugi</h3>
-          <p class="text-[color:var(--cream-dim)] leading-relaxed-body">
-            Dapat notifikasi begitu ROAS turun di bawah ambang batas, atau begitu satu campaign tembus target — bukan setelah budget hariannya habis.
-          </p>
-        </div>
-
-        <div class="feature-panel card-base rounded-3xl p-7">
-          <h3 class="font-display font-semibold text-xl mb-3">Angka yang disepakati bersama</h3>
-          <p class="text-[color:var(--cream-dim)] leading-relaxed-body">
-            Tim paid dan tim sosial berhenti berdebat soal angka mana yang benar. Satu sumber data, satu definisi metrik, buat semua orang.
-          </p>
-        </div>
-
-        <div class="feature-panel card-base rounded-3xl p-7 md:col-span-3">
-          <div class="md:flex md:items-center md:justify-between gap-8">
-            <div class="md:max-w-md">
-              <h3 class="font-display font-semibold text-xl mb-3">Export yang nggak bikin ulang slide</h3>
-              <p class="text-[color:var(--cream-dim)] leading-relaxed-body">
-                Satu klik untuk kirim ringkasan performa ke Sheets atau jadi slide siap presentasi, dengan format yang sudah ikut warna brand kamu.
-              </p>
-            </div>
-            <div class="mt-6 md:mt-0 flex gap-3 font-mono text-xs text-[color:var(--cream-dim)]">
-              <span class="chip rounded-lg px-3 py-2">weekly_report.xlsx</span>
-              <span class="chip rounded-lg px-3 py-2">deck_ringkasan.pdf</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- STORY / QUOTE -->
-  <section id="story" class="border-t border-[color:var(--line)]">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 py-20 md:py-28 grid md:grid-cols-2 gap-14 items-center">
-      <div>
-        <img src="Brand_Assets/LOGO.png" alt="Crackling.JKT" class="h-14 w-14 rounded-full mb-6">
-        <h2 class="font-display font-semibold text-3xl tracking-tightish mb-5">
-          Dibangun dari dapur sendiri.
-        </h2>
-        <p class="text-[color:var(--cream-dim)] leading-relaxed-body">
-          Crackling awalnya dibuat untuk kebutuhan sendiri: dua cabang Crackling.JKT yang jalanin iklan tiap hari tanpa mau menunggu laporan mingguan dari agency untuk tahu mana yang jalan. Setelah dashboard itu terbukti bikin keputusan jadi lebih cepat, kami buka untuk tim marketing lain yang punya masalah sama.
-        </p>
-      </div>
-      <blockquote class="card-elevated rounded-3xl p-8">
-        <p class="text-lg leading-relaxed-body">
-          "Kami berhenti nunggu deck mingguan dari agency. Sekarang boost yang kurang jalan ketahuan sebelum sempat habisin budget weekend."
-        </p>
-        <footer class="mt-6 flex items-center gap-3">
-          <div class="h-10 w-10 rounded-full bg-[color:var(--kriuk)] text-[color:var(--char-crust-2)] font-mono text-xs font-semibold flex items-center justify-center" aria-hidden="true">RA</div>
-          <div class="font-mono text-xs text-[color:var(--cream-dim)] leading-snug">
-            <p class="text-[color:var(--cream)]">Marketing Lead</p>
-            <p>Crackling.JKT, Gading Serpong &amp; Kelapa Gading</p>
-          </div>
-        </footer>
-      </blockquote>
-    </div>
-  </section>
-
-  <!-- PRICING -->
-  <section id="pricing" class="border-t border-[color:var(--line)]">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 py-20 md:py-28">
-      <h2 class="font-display font-semibold text-3xl md:text-4xl tracking-tightish max-w-xl">
-        Harga yang jelas dari awal.
-      </h2>
-      <p class="mt-4 text-[color:var(--cream-dim)] max-w-md">Mulai gratis, upgrade kalau tim kamu sudah butuh lebih dari satu workspace.</p>
-
-      <div class="mt-12 grid md:grid-cols-3 gap-6 items-start">
-        <div class="card-base rounded-3xl p-8">
-          <h3 class="font-display font-semibold text-lg">Starter</h3>
-          <p class="font-mono text-3xl mt-4">Gratis</p>
-          <ul class="mt-6 space-y-3 text-sm text-[color:var(--cream-dim)]">
-            <li>1 workspace</li>
-            <li>3 channel iklan</li>
-            <li>Riwayat data 7 hari</li>
-          </ul>
-          <a href="#" class="btn-ghost block text-center mt-8 rounded-full py-3 font-medium">Mulai gratis</a>
-        </div>
-
-        <div class="card-elevated rounded-3xl p-8 md:-translate-y-3 relative">
-          <span class="font-mono text-[11px] chip rounded-full px-3 py-1 absolute -top-3 left-8 bg-[color:var(--char-crust)]">Paling dipilih</span>
-          <h3 class="font-display font-semibold text-lg">Growth</h3>
-          <p class="font-mono text-3xl mt-4">Rp 490rb<span class="text-sm text-[color:var(--cream-dim)]">/bulan</span></p>
-          <ul class="mt-6 space-y-3 text-sm text-[color:var(--cream-dim)]">
-            <li>Channel tanpa batas</li>
-            <li>Riwayat data 90 hari</li>
-            <li>Alert real-time</li>
-            <li>Export ke Sheets &amp; slide</li>
-          </ul>
-          <a href="#" class="btn-primary text-[#241708] block text-center mt-8 rounded-full py-3 font-semibold">Mulai Growth</a>
-        </div>
-
-        <div class="card-base rounded-3xl p-8">
-          <h3 class="font-display font-semibold text-lg">Team</h3>
-          <p class="font-mono text-3xl mt-4">Rp 1,49jt<span class="text-sm text-[color:var(--cream-dim)]">/bulan</span></p>
-          <ul class="mt-6 space-y-3 text-sm text-[color:var(--cream-dim)]">
-            <li>Multi-workspace</li>
-            <li>Akses tim tanpa batas</li>
-            <li>Dukungan prioritas</li>
-          </ul>
-          <a href="#" class="btn-ghost block text-center mt-8 rounded-full py-3 font-medium">Hubungi kami</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FINAL CTA -->
-  <section class="cta-band">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 py-16 md:py-20 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-      <h2 class="font-display font-semibold text-2xl md:text-3xl text-[color:var(--char-crust-2)] tracking-tightish max-w-lg">
-        Berhenti refresh lima tab buat tahu kampanye hari ini jalan atau tidak.
-      </h2>
-      <a href="#pricing" class="shrink-0 bg-[color:var(--char-crust-2)] text-[color:var(--cream)] font-semibold px-7 py-3.5 rounded-full hover:-translate-y-0.5 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--char-crust-2)] focus-visible:outline-offset-4">
-        Mulai gratis, tanpa kartu
+      <a class="nav-item" href="#penjualan" data-page="penjualan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5.5-5.5 3.5 3.5L21 6"/><path d="M15 6h6v6"/></svg>
+        Penjualan
       </a>
-    </div>
-  </section>
+      <a class="nav-item" href="#iklan" data-page="iklan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        Iklan
+      </a>
+      <a class="nav-item" href="#sosial" data-page="sosial">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+        Social media
+      </a>
+      <a class="nav-item" href="#jadwal" data-page="jadwal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/></svg>
+        Jadwal kerja
+      </a>
+    </nav>
+    <p class="side-foot"><span id="mode-label" class="num"></span><br><span id="today-label"></span></p>
+  </aside>
 
-  <!-- FOOTER -->
-  <footer class="border-t border-[color:var(--line)]">
-    <div class="max-w-6xl mx-auto px-6 md:px-8 py-14 grid md:grid-cols-4 gap-10">
-      <div>
-        <a href="#top" class="flex items-center gap-3">
-          <img src="Brand_Assets/LOGO.png" alt="Crackling" class="h-8 w-8 rounded-full">
-          <span class="font-display font-semibold">Crackling</span>
-        </a>
-        <p class="font-mono text-xs text-[color:var(--cream-dim)] mt-4">Dibuat di Jakarta.</p>
-      </div>
-      <div>
-        <p class="font-mono text-xs text-[color:var(--cream-dim)] mb-4">Produk</p>
-        <ul class="space-y-2 text-sm">
-          <li><a href="#features" class="nav-link">Fitur</a></li>
-          <li><a href="#pricing" class="nav-link">Harga</a></li>
-        </ul>
-      </div>
-      <div>
-        <p class="font-mono text-xs text-[color:var(--cream-dim)] mb-4">Perusahaan</p>
-        <ul class="space-y-2 text-sm">
-          <li><a href="#story" class="nav-link">Cerita kami</a></li>
-        </ul>
-      </div>
-      <div>
-        <p class="font-mono text-xs text-[color:var(--cream-dim)] mb-4">Kontak</p>
-        <ul class="space-y-2 text-sm">
-          <li><a href="#" class="nav-link">hello@crackling.jkt</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="max-w-6xl mx-auto px-6 md:px-8 pb-10">
-      <p class="font-mono text-[11px] text-[color:var(--cream-dim)]">© 2026 Crackling. Semua hak dilindungi.</p>
-    </div>
-  </footer>
+  <main class="content" id="main">
+    <div class="banner" id="demo-banner" hidden></div>
 
+    <!-- ============ RINGKASAN ============ -->
+    <section class="panel" id="page-ringkasan" aria-labelledby="h-ringkasan">
+      <div class="page-head">
+        <div>
+          <h1 id="h-ringkasan">Ringkasan</h1>
+          <p class="sub" id="recap-period"></p>
+        </div>
+        <div class="seg-group">
+          <button class="btn-quiet" data-range="7" aria-pressed="true">7 hari</button>
+          <button class="btn-quiet" data-range="30" aria-pressed="false">30 hari</button>
+          <button class="btn-copy" id="copy-recap">Salin rekap</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="split" id="recap-kpi"></div>
+        <div class="facts" id="recap-facts"></div>
+        <span class="saved" id="recap-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Penjualan vs biaya iklan</h2>
+            <p class="sub">Batang = penjualan per cabang, garis putus-putus = biaya iklan</p>
+          </div>
+        </div>
+        <div class="chartbox" id="sales-chart"></div>
+        <div class="legend" id="chart-legend"></div>
+      </div>
+    </section>
+
+    <!-- ============ PENJUALAN ============ -->
+    <section class="panel" id="page-penjualan" aria-labelledby="h-penjualan">
+      <div class="page-head">
+        <div>
+          <h1 id="h-penjualan">Penjualan</h1>
+          <p class="sub">Dari ESB, Gojek/Grab, dan Paper &mdash; dua cabang</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="sub" style="margin:0">Hari ini</p>
+        <div class="hero-num num" id="sales-today">Rp0</div>
+        <div class="delta" id="sales-delta">&nbsp;</div>
+
+        <p class="group-label">Per cabang hari ini</p>
+        <div class="split" id="branch-tiles"></div>
+
+        <p class="group-label">Per sumber hari ini</p>
+        <div class="split" id="source-tiles"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Komposisi sumber</h2><p class="sub" id="donut-sub"></p></div></div>
+        <div class="two-col">
+          <div id="source-donut"></div>
+          <div class="donut-legend" id="source-legend"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Input penjualan</h2><p class="sub">Pilih tanggal dan cabang &mdash; angka lama otomatis muncul untuk dikoreksi</p></div></div>
+        <form class="row" id="sales-form" style="margin-top:0;padding-top:0;border-top:0">
+          <div>
+            <label for="s-date">Tanggal</label>
+            <input type="date" id="s-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="s-branch">Cabang</label>
+            <select id="s-branch"></select>
+          </div>
+          <div>
+            <label for="s-esb">ESB</label>
+            <input type="number" id="s-esb" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="s-gojek">Gojek / Grab</label>
+            <input type="number" id="s-gojek" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="s-paper">Paper</label>
+            <input type="number" id="s-paper" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="sales-saved" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ============ IKLAN ============ -->
+    <section class="panel" id="page-iklan" aria-labelledby="h-iklan">
+      <div class="page-head">
+        <div>
+          <h1 id="h-iklan">Iklan</h1>
+          <p class="sub" id="budget-month-label"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Pemakaian budget</h2></div></div>
+        <div class="tile">
+          <div class="label">Budget bulan ini</div>
+          <div class="value num" id="budget-used">Rp0</div>
+          <div class="progress" id="budget-progress" aria-hidden="true"><div class="fill" style="width:0%"></div></div>
+          <div class="hint" id="budget-hint"></div>
+        </div>
+        <form class="row" id="budget-form">
+          <div>
+            <label for="b-amount">Ubah budget iklan bulan ini</label>
+            <input type="number" id="b-amount" min="0" step="100000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Total biaya iklan</h2><p class="sub" id="spend-period"></p></div></div>
+        <div class="hero-num num" id="spend-total">Rp0</div>
+        <div class="delta" id="spend-delta">&nbsp;</div>
+        <p class="group-label">Per channel</p>
+        <div class="split" id="channel-tiles"></div>
+        <p class="group-label">Biaya per hari, dipecah per channel</p>
+        <div class="chartbox" id="spend-chart"></div>
+        <div class="legend" id="spend-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Performa iklan</h2><p class="sub" id="perf-sub"></p></div></div>
+        <div class="split" id="perf-tiles"></div>
+        <p class="roas-line" id="roas-line"></p>
+        <p class="group-label">Efisiensi: CPC &amp; CTR per hari</p>
+        <div class="chartbox" id="eff-chart"></div>
+        <div class="legend" id="eff-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Perbandingan channel</h2><p class="sub" id="table-sub"></p></div></div>
+        <div class="table-scroll">
+          <table class="cmp" id="channel-table"></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Input data iklan</h2>
+            <p class="sub">Angka bisa disalin langsung dari Meta Ads Manager / TikTok Ads Manager. Untuk KOL, isi biaya dan jangkauan saja.</p>
+          </div>
+        </div>
+        <form class="row" id="ads-form">
+          <div>
+            <label for="a-date">Tanggal</label>
+            <input type="date" id="a-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="a-channel">Channel</label>
+            <select id="a-channel"></select>
+          </div>
+          <div>
+            <label for="a-spend">Biaya <span class="hintlabel">Amount spent</span></label>
+            <input type="number" id="a-spend" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-impr">Impresi <span class="hintlabel">Impressions</span></label>
+            <input type="number" id="a-impr" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-reach">Jangkauan <span class="hintlabel">Reach</span></label>
+            <input type="number" id="a-reach" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-clicks">Klik <span class="hintlabel">Link clicks</span></label>
+            <input type="number" id="a-clicks" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-results">Hasil <span class="hintlabel">Results</span></label>
+            <input type="number" id="a-results" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="a-value">Nilai hasil <span class="hintlabel">Conversion value</span></label>
+            <input type="number" id="a-value" min="0" step="1000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="ads-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Promo yang jalan</h2><p class="sub">Catatan promo bikin naik-turun penjualan ada ceritanya</p></div></div>
+        <ul class="notes" id="note-list"></ul>
+        <form class="row" id="note-form">
+          <div>
+            <label for="n-date">Tanggal</label>
+            <input type="date" id="n-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="n-note">Promo hari itu</label>
+            <input type="text" id="n-note" placeholder="mis. Bundling keluarga weekend…" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="note-saved" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ============ SOCIAL MEDIA ============ -->
+    <section class="panel" id="page-sosial" aria-labelledby="h-sosial">
+      <div class="page-head">
+        <div>
+          <h1 id="h-sosial">Social media</h1>
+          <p class="sub" id="social-sub"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="social-grid" id="social-grid"></div>
+        <form class="row" id="social-form">
+          <div>
+            <label for="so-date">Tanggal</label>
+            <input type="date" id="so-date" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="so-ig">Instagram</label>
+            <input type="number" id="so-ig" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="so-tt">TikTok</label>
+            <input type="number" id="so-tt" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="so-th">Threads</label>
+            <input type="number" id="so-th" min="0" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan</button></div>
+        </form>
+        <span class="saved" id="social-saved" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ============ JADWAL KERJA ============ -->
+    <section class="panel" id="page-jadwal" aria-labelledby="h-jadwal">
+      <div class="page-head">
+        <div>
+          <h1 id="h-jadwal">Jadwal kerja</h1>
+          <p class="sub">Sulthan isi sendiri pekerjaannya &mdash; pilih tanggal, tulis apa yang dikerjakan</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="split" id="work-stats"></div>
+      </div>
+
+      <div class="card">
+        <div class="cal-bar">
+          <button class="btn-quiet" id="cal-prev" aria-label="Bulan sebelumnya">&larr;</button>
+          <span class="mname" id="cal-month"></span>
+          <button class="btn-quiet" id="cal-next" aria-label="Bulan berikutnya">&rarr;</button>
+        </div>
+        <div class="cal-grid" id="cal-dow" aria-hidden="true"></div>
+        <div class="cal-grid" id="cal-grid" style="margin-top:6px"></div>
+        <div class="legend" style="margin-top:14px">
+          <span><span class="swatch" style="background:var(--kriuk);border-radius:50%"></span>jangka pendek</span>
+          <span><span class="swatch" style="background:var(--herb);border-radius:50%"></span>jangka panjang</span>
+          <span><span class="swatch" style="background:#ddd0bd;border-radius:50%"></span>selesai</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2 id="work-day-title">Pekerjaan</h2><p class="sub" id="work-day-sub"></p></div></div>
+        <ul class="work" id="work-list"></ul>
+        <form class="row" id="work-form">
+          <div>
+            <label for="w-title">Pekerjaan apa?</label>
+            <input type="text" id="w-title" placeholder="mis. Bikin konten promo gajian…" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="w-scope">Jangka</label>
+            <select id="w-scope">
+              <option value="pendek">Jangka pendek</option>
+              <option value="panjang">Jangka panjang</option>
+            </select>
+          </div>
+          <div><button class="btn-primary" type="submit">Tambah</button></div>
+        </form>
+        <span class="saved" id="work-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Belum selesai &amp; lewat tanggal</h2><p class="sub">Yang tanggalnya sudah lewat tapi belum dicentang</p></div></div>
+        <ul class="work" id="work-late"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Rencana jangka panjang</h2><p class="sub">Semua pekerjaan jangka panjang yang belum selesai</p></div></div>
+        <ul class="work" id="work-long"></ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
