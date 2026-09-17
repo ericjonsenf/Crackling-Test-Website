@@ -1,8 +1,8 @@
-// Supabase project credentials.
-// Get these from: Supabase project -> Project Settings -> API
-// Paste them below. The anon key is safe to expose in frontend code —
-// it only allows what the Row Level Security policies in supabase-schema.sql permit.
+// Kredensial Supabase.
+// anon key memang dirancang untuk publik — dia hanya bisa melakukan apa yang
+// diizinkan Row Level Security di supabase-schema.sql. Yang HARUS dirahasiakan
+// adalah service_role key: jangan pernah taruh di file ini.
 window.SUPABASE_CONFIG = {
-  url: 'YOUR_SUPABASE_URL',
-  anonKey: 'YOUR_SUPABASE_ANON_KEY',
+  url: 'https://tgktrtealplbzrsrhfee.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRna3RydGVhbHBsYnpyc3JoZmVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTUsImV4cCI6MjEwNTE2NDM5NX0.aHxH3KGDhHf7rncKLKAtOg5_IPwLlpPBrDrScn-QSJo',
 };

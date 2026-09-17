@@ -1,13 +1,23 @@
 // Papan Marketing Crackling — data, grafik, jadwal kerja.
-// Dua mode:
-//   DEMO : config.js masih placeholder -> data di localStorage browser ini saja.
-//   LIVE : URL + anon key Supabase terisi -> data di Postgres, sinkron untuk semua orang.
+// Data ada di Supabase. Siapa boleh melihat apa ditentukan oleh Row Level Security
+// di supabase-schema.sql; penyembunyian menu di sini hanya supaya tampilannya rapi,
+// bukan pengaman. Pengamannya ada di database.
 (function () {
   'use strict';
 
   var cfg = window.SUPABASE_CONFIG || {};
-  var DEMO = !cfg.url || cfg.url.indexOf('YOUR_') === 0;
-  var sb = (!DEMO && window.supabase) ? window.supabase.createClient(cfg.url, cfg.anonKey) : null;
+  var sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+
+  // Siapa boleh melihat apa. Harus cermin dari policy di supabase-schema.sql.
+  var PERMS = {
+    owner: { money: true, ads: true, social: true, allWork: true },
+    lead: { money: true, ads: true, social: true, allWork: true },
+    ads: { money: false, ads: true, social: false, allWork: false },
+    social: { money: false, ads: false, social: true, allWork: false }
+  };
+  var ROLE_LABEL = { owner: 'Owner', lead: 'Marketing Lead', ads: 'Crew Ads', social: 'Crew Social Media' };
+  var me = null;   // { id, name, role }
+  var perm = PERMS.social;
 
   var BRANCHES = [
     { key: 'gading_serpong', label: 'Gading Serpong', color: '#c1440e' },
@@ -77,19 +87,6 @@
     });
   }
 
-  // ---------- penyimpanan lokal (mode demo) ----------
-  var LS_KEY = 'crackling_papan_v4';
-  var local = null;
-  function loadLocal() {
-    try {
-      var raw = localStorage.getItem(LS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-    return { sales: {}, ads: {}, notes: {}, social: {}, budget: {}, work: [] };
-  }
-  function saveLocal() { localStorage.setItem(LS_KEY, JSON.stringify(local)); }
-  if (DEMO) { local = loadLocal(); saveLocal(); }
-
   function emptySale() { return { esb: 0, gojek_grab: 0, paper: 0 }; }
   function emptyAd() {
     var o = {};
@@ -114,7 +111,26 @@
     return target;
   }
 
+  // ---------- autentikasi & profil ----------
+  var Auth = {
+    async session() {
+      var res = await sb.auth.getSession();
+      return res.data.session;
+    },
+    async signIn(email, password) {
+      return await sb.auth.signInWithPassword({ email: email, password: password });
+    },
+    async signOut() { await sb.auth.signOut(); },
+    // Ambil profil + peran. Kalau barisnya belum ada, akunnya belum diberi peran.
+    async profile(userId) {
+      var res = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
+      return res.data;
+    }
+  };
+
   // ---------- akses data ----------
+  // Semua query di bawah tunduk pada Row Level Security. Kalau peran pengguna
+  // tidak berhak, Supabase mengembalikan kosong / error — bukan datanya.
   var DB = {
     async getSales(dates) {
       var map = {};
@@ -122,15 +138,6 @@
         map[d] = {};
         BRANCHES.forEach(function (b) { map[d][b.key] = emptySale(); });
       });
-      if (DEMO) {
-        dates.forEach(function (d) {
-          var day = local.sales[d] || {};
-          BRANCHES.forEach(function (b) {
-            if (day[b.key]) map[d][b.key] = Object.assign(emptySale(), day[b.key]);
-          });
-        });
-        return map;
-      }
       var res = await sb.from('sales_daily').select('*')
         .gte('entry_date', dates[0]).lte('entry_date', dates[dates.length - 1]);
       (res.data || []).forEach(function (r) {
@@ -142,13 +149,7 @@
       return map;
     },
     async saveSales(date, branch, vals) {
-      if (DEMO) {
-        if (!local.sales[date]) local.sales[date] = {};
-        local.sales[date][branch] = vals;
-        saveLocal();
-        return;
-      }
-      await sb.from('sales_daily')
+      return await sb.from('sales_daily')
         .upsert(Object.assign({ entry_date: date, branch: branch }, vals), { onConflict: 'entry_date,branch' });
     },
 
@@ -159,15 +160,6 @@
         map[d] = {};
         CHANNELS.forEach(function (c) { map[d][c.key] = emptyAd(); });
       });
-      if (DEMO) {
-        dates.forEach(function (d) {
-          var day = local.ads[d] || {};
-          CHANNELS.forEach(function (c) {
-            if (day[c.key]) map[d][c.key] = Object.assign(emptyAd(), day[c.key]);
-          });
-        });
-        return map;
-      }
       var res = await sb.from('ad_daily').select('*')
         .gte('entry_date', dates[0]).lte('entry_date', dates[dates.length - 1]);
       (res.data || []).forEach(function (r) {
@@ -179,100 +171,59 @@
       return map;
     },
     async saveAd(date, channel, vals) {
-      if (DEMO) {
-        if (!local.ads[date]) local.ads[date] = {};
-        local.ads[date][channel] = vals;
-        saveLocal();
-        return;
-      }
-      await sb.from('ad_daily')
+      return await sb.from('ad_daily')
         .upsert(Object.assign({ entry_date: date, channel: channel }, vals), { onConflict: 'entry_date,channel' });
     },
 
     async getNotes(dates) {
       var map = {};
       dates.forEach(function (d) { map[d] = ''; });
-      if (DEMO) {
-        dates.forEach(function (d) { map[d] = local.notes[d] || ''; });
-        return map;
-      }
       var res = await sb.from('campaign_notes').select('*')
         .gte('entry_date', dates[0]).lte('entry_date', dates[dates.length - 1]);
       (res.data || []).forEach(function (r) { map[r.entry_date] = r.note || ''; });
       return map;
     },
     async saveNote(date, note) {
-      if (DEMO) { local.notes[date] = note; saveLocal(); return; }
-      await sb.from('campaign_notes').upsert({ entry_date: date, note: note }, { onConflict: 'entry_date' });
+      return await sb.from('campaign_notes').upsert({ entry_date: date, note: note }, { onConflict: 'entry_date' });
     },
 
     async getBudget(mk) {
-      if (DEMO) return Number(local.budget[mk]) || 0;
       var res = await sb.from('monthly_budget').select('*').eq('month', mk).maybeSingle();
       return res.data ? Number(res.data.ad_budget) || 0 : 0;
     },
     async saveBudget(mk, amount) {
-      if (DEMO) { local.budget[mk] = amount; saveLocal(); return; }
-      await sb.from('monthly_budget').upsert({ month: mk, ad_budget: amount }, { onConflict: 'month' });
+      return await sb.from('monthly_budget').upsert({ month: mk, ad_budget: amount }, { onConflict: 'month' });
     },
     // total biaya iklan satu bulan kalender, semua channel
     async getMonthSpend(mk) {
-      if (DEMO) {
-        return Object.keys(local.ads).reduce(function (sum, d) {
-          if (d.indexOf(mk) !== 0) return sum;
-          return sum + CHANNELS.reduce(function (a, c) {
-            return a + (local.ads[d][c.key] ? Number(local.ads[d][c.key].spend) || 0 : 0);
-          }, 0);
-        }, 0);
-      }
       var res = await sb.from('ad_daily').select('spend')
         .gte('entry_date', mk + '-01').lte('entry_date', mk + '-31');
       return (res.data || []).reduce(function (s, r) { return s + (Number(r.spend) || 0); }, 0);
     },
 
     async getSocialHistory(limit) {
-      if (DEMO) {
-        return Object.keys(local.social).sort().slice(-limit).map(function (d) {
-          return Object.assign({ entry_date: d }, local.social[d]);
-        });
-      }
       var res = await sb.from('social_daily').select('*').order('entry_date', { ascending: false }).limit(limit);
       return (res.data || []).reverse();
     },
     async saveSocial(date, vals) {
-      if (DEMO) { local.social[date] = vals; saveLocal(); return; }
-      await sb.from('social_daily').upsert(Object.assign({ entry_date: date }, vals), { onConflict: 'entry_date' });
+      return await sb.from('social_daily').upsert(Object.assign({ entry_date: date }, vals), { onConflict: 'entry_date' });
     },
 
     // --- jadwal kerja ---
+    // RLS sudah membatasi ke milik sendiri kecuali owner/lead, jadi tidak perlu
+    // filter user_id di sini.
     async getWork() {
-      if (DEMO) return local.work.slice().sort(function (a, b) { return a.work_date < b.work_date ? -1 : 1; });
       var res = await sb.from('work_items').select('*').order('work_date');
       return res.data || [];
     },
     async addWork(item) {
-      if (DEMO) {
-        local.work.push(Object.assign({ id: crypto.randomUUID(), done: false }, item));
-        saveLocal();
-        return;
-      }
-      await sb.from('work_items').insert(item);
+      return await sb.from('work_items').insert(Object.assign({ user_id: me.id }, item));
     },
     async setWorkDone(id, done) {
-      if (DEMO) {
-        var w = local.work.find(function (x) { return x.id === id; });
-        if (w) { w.done = done; saveLocal(); }
-        return;
-      }
-      await sb.from('work_items').update({ done: done }).eq('id', id);
+      return await sb.from('work_items').update({ done: done }).eq('id', id);
     },
     async deleteWork(id) {
-      if (DEMO) {
-        local.work = local.work.filter(function (x) { return x.id !== id; });
-        saveLocal();
-        return;
-      }
-      await sb.from('work_items').delete().eq('id', id);
+      return await sb.from('work_items').delete().eq('id', id);
     }
   };
 
@@ -611,14 +562,19 @@
       '<div class="tile"><div class="label">Hasil</div><div class="value num">' + num(m.results) + '</div><div class="hint">konversi dari iklan</div></div>' +
       '<div class="tile accent"><div class="label">Biaya per hasil</div><div class="value num">' + (m.cpa ? rupiah(m.cpa) : '—') + '</div><div class="hint">biaya ÷ hasil</div></div>' +
       '<div class="tile"><div class="label">ROAS platform</div><div class="value num">' + (m.roas ? dec(m.roas, 1) + '×' : '—') + '</div><div class="hint">nilai hasil ÷ biaya</div></div>' +
-      '<div class="tile"><div class="label">ROAS blended</div><div class="value num">' + (spend ? dec(blendedRoas, 1) + '×' : '—') + '</div><div class="hint">semua penjualan ÷ biaya</div></div>' +
-      '<div class="tile"><div class="label">Rasio iklan</div><div class="value num">' + (revenue ? dec(ratio, 1) + '%' : '—') + '</div><div class="hint">porsi iklan dari penjualan</div></div>';
+      // blended & rasio butuh angka penjualan — hanya untuk peran yang boleh melihatnya
+      (perm.money
+        ? '<div class="tile"><div class="label">ROAS blended</div><div class="value num">' + (spend ? dec(blendedRoas, 1) + '×' : '—') + '</div><div class="hint">semua penjualan ÷ biaya</div></div>' +
+          '<div class="tile"><div class="label">Rasio iklan</div><div class="value num">' + (revenue ? dec(ratio, 1) + '%' : '—') + '</div><div class="hint">porsi iklan dari penjualan</div></div>'
+        : '');
 
     document.getElementById('roas-line').innerHTML = !spend
       ? 'Belum ada biaya iklan tercatat di periode ini.'
-      : '<strong>ROAS platform</strong> pakai nilai konversi yang dilaporkan Meta/TikTok — hanya penjualan yang mereka klaim. ' +
-        '<strong>ROAS blended</strong> membagi <em>seluruh</em> penjualan toko dengan biaya iklan, jadi termasuk pembeli yang datang bukan dari iklan. ' +
-        'Angka blended selalu lebih besar; pakai yang platform untuk menilai iklan, yang blended untuk menilai bisnis.';
+      : (perm.money
+        ? '<strong>ROAS platform</strong> pakai nilai konversi yang dilaporkan Meta/TikTok — hanya penjualan yang mereka klaim. ' +
+          '<strong>ROAS blended</strong> membagi <em>seluruh</em> penjualan toko dengan biaya iklan, jadi termasuk pembeli yang datang bukan dari iklan. ' +
+          'Angka blended selalu lebih besar; pakai yang platform untuk menilai iklan, yang blended untuk menilai bisnis.'
+        : '<strong>ROAS platform</strong> memakai nilai konversi yang dilaporkan Meta/TikTok — penjualan yang mereka klaim berasal dari iklan.');
 
     document.getElementById('eff-chart').innerHTML = effChart(cur, ads);
     document.getElementById('eff-legend').innerHTML =
@@ -785,7 +741,7 @@
       cb.addEventListener('change', async function () {
         await DB.setWorkDone(cb.getAttribute('data-work'), cb.checked);
         renderWork();
-        renderNumbers();
+        refresh();
       });
     });
     el.querySelectorAll('[data-delwork]').forEach(function (btn) {
@@ -793,7 +749,7 @@
         if (!confirm('Hapus pekerjaan ini? Tidak bisa dibatalkan.')) return;
         await DB.deleteWork(btn.getAttribute('data-delwork'));
         renderWork();
-        renderNumbers();
+        refresh();
       });
     });
   }
@@ -889,7 +845,7 @@
       input.value = '';
       say('work-saved', 'Ditambahkan ke ' + longDate(selectedDate));
       renderWork();
-      renderNumbers();
+      refresh();
     });
   }
 
@@ -994,7 +950,7 @@
         paper: Number(document.getElementById('s-paper').value) || 0
       });
       say('sales-saved', 'Penjualan tersimpan');
-      renderNumbers();
+      refresh();
     });
 
     onSubmit('ads-form', async function () {
@@ -1006,19 +962,19 @@
       await DB.saveAd(document.getElementById('a-date').value, ch, vals);
       var label = CHANNELS.filter(function (c) { return c.key === ch; })[0].label;
       say('ads-saved', 'Data ' + label + ' tersimpan');
-      renderNumbers();
+      refresh();
     });
 
     onSubmit('note-form', async function () {
       await DB.saveNote(document.getElementById('n-date').value, document.getElementById('n-note').value.trim());
       say('note-saved', 'Catatan promo tersimpan');
-      renderNumbers();
+      refresh();
     });
 
     onSubmit('budget-form', async function () {
       await DB.saveBudget(monthKey(), Number(document.getElementById('b-amount').value) || 0);
       say('ads-saved', 'Budget tersimpan');
-      renderNumbers();
+      refresh();
     });
 
     onSubmit('social-form', async function () {
@@ -1029,7 +985,7 @@
       });
       say('social-saved', 'Angka social media tersimpan');
       renderSocial();
-      renderNumbers();
+      refresh();
     });
 
     document.getElementById('copy-recap').addEventListener('click', async function () {
@@ -1052,7 +1008,7 @@
         document.querySelectorAll('[data-range]').forEach(function (b) {
           b.setAttribute('aria-pressed', String(b === btn));
         });
-        renderNumbers();
+        refresh();
       });
     });
 
@@ -1068,8 +1024,19 @@
   }
 
   // ---------- navigasi ----------
+  function allowedPages() {
+    var out = [];
+    if (perm.money) out.push('ringkasan');
+    out.push('penjualan');            // semua peran: minimal boleh mengisi
+    if (perm.ads) out.push('iklan');
+    if (perm.social) out.push('sosial');
+    out.push('jadwal');
+    return out;
+  }
+
   function showPage(name) {
-    if (PAGES.indexOf(name) === -1) name = PAGES[0];
+    var allowed = allowedPages();
+    if (allowed.indexOf(name) === -1) name = allowed[0];
     PAGES.forEach(function (p) {
       document.getElementById('page-' + p).classList.toggle('active', p === name);
     });
@@ -1079,24 +1046,111 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('today-label').textContent = longDate(dateStr());
-    document.getElementById('mode-label').textContent = DEMO ? 'mode demo' : 'tersambung';
-    if (DEMO) {
-      var b = document.getElementById('demo-banner');
-      b.textContent = 'Mode demo — data hanya tersimpan di browser ini. Isi config.js dengan kredensial Supabase supaya tersimpan permanen dan bisa dibuka Sulthan dari HP-nya.';
-      b.hidden = false;
-    }
+  // Sembunyikan bagian yang tidak boleh dilihat peran ini.
+  // Ini hanya kerapian tampilan — penolakan sesungguhnya dilakukan RLS di database.
+  function applyPermissions() {
+    var allowed = allowedPages();
+    document.querySelectorAll('.nav-item').forEach(function (a) {
+      a.hidden = allowed.indexOf(a.getAttribute('data-page')) === -1;
+    });
+    // Penjualan: peran tanpa akses uang hanya melihat form input
+    document.querySelectorAll('#page-penjualan [data-money]').forEach(function (el) {
+      el.hidden = !perm.money;
+    });
+    var notice = document.getElementById('sales-notice');
+    if (notice) notice.hidden = perm.money;
+    // ROAS blended butuh data penjualan, jadi hanya untuk yang boleh lihat uang
+    document.body.classList.toggle('no-money', !perm.money);
+  }
 
+  function showLogin(msg) {
+    document.getElementById('auth-gate').hidden = false;
+    document.querySelector('.shell').hidden = true;
+    var err = document.getElementById('login-error');
+    err.textContent = msg || '';
+    err.hidden = !msg;
+  }
+
+  async function startApp(profile) {
+    me = profile;
+    perm = PERMS[profile.role] || PERMS.social;
+
+    document.getElementById('auth-gate').hidden = true;
+    document.querySelector('.shell').hidden = false;
+    document.getElementById('today-label').textContent = longDate(dateStr());
+    document.getElementById('me-name').textContent = profile.name;
+    document.getElementById('me-role').textContent = ROLE_LABEL[profile.role] || profile.role;
+
+    applyPermissions();
     showPage((location.hash || '').replace('#', ''));
+
+    wireForms();
+    wireWork();
+    if (perm.money) renderNumbers();
+    else renderAdsOnly();
+    if (perm.social) renderSocial();
+    renderWork();
+  }
+
+  // Peran tanpa akses penjualan: tetap butuh angka iklan, tapi tanpa data omzet.
+  async function renderAdsOnly() {
+    if (!perm.ads) return;
+    var dates = lastNDates(range * 2);
+    var cur = dates.slice(range), prev = dates.slice(0, range);
+    var empty = {};
+    dates.forEach(function (d) {
+      empty[d] = {};
+      BRANCHES.forEach(function (b) { empty[d][b.key] = emptySale(); });
+    });
+    var ads = await DB.getAds(dates);
+    var notes = await DB.getNotes(dates);
+    await renderAds(cur, prev, empty, ads, notes);
+  }
+
+  function refresh() {
+    if (perm.money) renderNumbers();
+    else renderAdsOnly();
+  }
+
+  async function boot() {
+    var session = await Auth.session();
+    if (!session) { showLogin(); return; }
+    var profile = await Auth.profile(session.user.id);
+    if (!profile) {
+      await Auth.signOut();
+      showLogin('Akun ini belum diberi peran. Minta owner menjalankan perintah penetapan peran di Supabase.');
+      return;
+    }
+    startApp(profile);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('hashchange', function () {
       showPage(location.hash.replace('#', ''));
     });
 
-    wireForms();
-    wireWork();
-    renderNumbers();
-    renderSocial();
-    renderWork();
+    document.getElementById('login-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true;
+      var res = await Auth.signIn(
+        document.getElementById('login-email').value.trim(),
+        document.getElementById('login-password').value
+      );
+      btn.disabled = false;
+      if (res.error) {
+        showLogin(res.error.message === 'Invalid login credentials'
+          ? 'Email atau password salah.' : res.error.message);
+        return;
+      }
+      boot();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async function () {
+      await Auth.signOut();
+      location.reload();
+    });
+
+    boot();
   });
 })();
