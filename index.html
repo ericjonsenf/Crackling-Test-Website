@@ -397,6 +397,16 @@
         <button class="btn-copy" id="copy-recap">Salin rekap</button>
       </div>
 
+      <div class="card" data-money>
+        <div class="card-head">
+          <div>
+            <h2>Target vs realisasi</h2>
+            <p class="sub">Bulan <span id="target-month"></span> &mdash; mengikuti bulan dari tanggal akhir rentang</p>
+          </div>
+        </div>
+        <div id="target-box"></div>
+      </div>
+
       <div class="card">
         <div class="split" id="recap-kpi"></div>
         <span class="saved" id="recap-saved" role="status" aria-live="polite"></span>
@@ -488,6 +498,27 @@
 
       <div class="banner" id="sales-notice" hidden>
         Kamu bisa memasukkan angka penjualan di sini, tapi rekap dan grafiknya hanya bisa dilihat owner dan marketing lead.
+      </div>
+
+      <div class="card" data-money>
+        <div class="card-head">
+          <div>
+            <h2>Atur target omzet</h2>
+            <p class="sub">Target bulan <span id="tg-month-label"></span>, dipasang per cabang</p>
+          </div>
+        </div>
+        <form class="row" id="target-form" style="margin-top:0;padding-top:0;border-top:0">
+          <div>
+            <label for="tg-gading_serpong">Gading Serpong</label>
+            <input type="number" id="tg-gading_serpong" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div>
+            <label for="tg-kelapa_gading">Kelapa Gading</label>
+            <input type="number" id="tg-kelapa_gading" min="0" step="1000000" placeholder="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Simpan target</button></div>
+        </form>
+        <span class="saved" id="target-saved" role="status" aria-live="polite"></span>
       </div>
 
       <div class="card">
@@ -757,9 +788,9 @@
      Tracking Prevention (Edge/Safari) memblokir akses localStorage untuk skrip
      dari domain lain, sehingga sesi login gagal tersimpan dan pengguna terlempar
      balik ke layar masuk. -->
-<script src="vendor/supabase.js?v=9"></script>
+<script src="vendor/supabase.js?v=10"></script>
 <!-- ?v= dinaikkan tiap kali app.js berubah, supaya browser tidak memakai versi lama -->
-<script src="config.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="config.js?v=10"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

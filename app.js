@@ -254,6 +254,21 @@
     async getMembers() {
       var res = await sb.from('profiles').select('id,name,role').order('name');
       return res.data || [];
+    },
+
+    // --- target omzet bulanan per cabang ---
+    async getTargets(month) {
+      var map = {};
+      BRANCHES.forEach(function (b) { map[b.key] = 0; });
+      var res = await sb.from('targets').select('*').eq('month', month);
+      (res.data || []).forEach(function (r) {
+        if (map[r.branch] !== undefined) map[r.branch] = Number(r.revenue_target) || 0;
+      });
+      return map;
+    },
+    async saveTarget(month, branch, amount) {
+      return await sb.from('targets')
+        .upsert({ month: month, branch: branch, revenue_target: amount }, { onConflict: 'month,branch' });
     }
   };
 
@@ -467,6 +482,7 @@
     var notes = await DB.getNotes(dates);
 
     renderSales(cur, sales, ads, notes);
+    await renderTarget();
     await renderAds(cur, prev, sales, ads, notes);
     await renderRecap(cur, prev, sales, ads, notes);
     await fillSalesForm();
@@ -686,6 +702,112 @@
     var naik = p >= 0;
     return '<span class="' + (naik ? 'up' : 'down') + '">' + (naik ? '↑ +' : '↓ ') + p + '%</span>' +
       ' <span class="flat">vs periode lalu' + (suffix || '') + '</span>';
+  }
+
+  // ---------- target vs realisasi ----------
+  // Target dipasang per bulan, jadi kartunya mengikuti bulan tempat tanggal
+  // akhir rentang berada — pilih "bulan lalu", yang tampil target bulan lalu.
+  async function renderTarget() {
+    var box = document.getElementById('target-box');
+    if (!box || !perm.money) return;
+
+    var akhir = new Date(dTo + 'T00:00:00');
+    var y = akhir.getFullYear(), m = akhir.getMonth();
+    var mk = dTo.slice(0, 7);
+    var awalBulan = dateStr(new Date(y, m, 1));
+    var akhirBulan = dateStr(new Date(y, m + 1, 0));
+    var jmlHari = new Date(y, m + 1, 0).getDate();
+
+    var target = await DB.getTargets(mk);
+    var sales = await DB.getSales(datesBetween(awalBulan, akhirBulan));
+
+    var realisasi = {};
+    BRANCHES.forEach(function (b) {
+      realisasi[b.key] = datesBetween(awalBulan, akhirBulan)
+        .reduce(function (a, d) { return a + branchTotal(sales[d][b.key]); }, 0);
+    });
+
+    var totTarget = BRANCHES.reduce(function (a, b) { return a + target[b.key]; }, 0);
+    var totReal = BRANCHES.reduce(function (a, b) { return a + realisasi[b.key]; }, 0);
+
+    // hari yang sudah lewat di bulan itu — kalau bulan lampau, seluruhnya
+    var hariLewat = (dateStr() > akhirBulan) ? jmlHari
+      : (dateStr() < awalBulan ? 0 : new Date().getDate());
+    var sisaHari = Math.max(0, jmlHari - hariLewat);
+
+    document.getElementById('target-month').textContent = monthName(y, m);
+
+    if (!totTarget) {
+      box.innerHTML = '<p class="sub" style="margin:0">Target bulan ' + monthName(y, m) +
+        ' belum diisi. Isi di bawah supaya dashboard bisa menghitung progres dan sisa kejaran per hari.</p>';
+    } else {
+      var pctAll = Math.round((totReal / totTarget) * 100);
+      var kurang = totTarget - totReal;
+      var perHari = sisaHari ? kurang / sisaHari : 0;
+      var lajuSekarang = hariLewat ? totReal / hariLewat : 0;
+      var proyeksi = Math.round(lajuSekarang * jmlHari);
+      var onTrack = proyeksi >= totTarget;
+
+      box.innerHTML =
+        '<div class="split" style="margin-bottom:16px">' +
+          '<div class="tile"><div class="label">Target bulan ini</div><div class="value num">' + rupiah(totTarget) + '</div></div>' +
+          '<div class="tile"><div class="label">Tercapai</div><div class="value num">' + rupiah(totReal) + '</div>' +
+            '<div class="hint ' + (pctAll >= 100 ? 'up' : '') + '">' + pctAll + '% dari target</div></div>' +
+          '<div class="tile' + (kurang > 0 ? '' : ' accent') + '"><div class="label">' +
+            (kurang > 0 ? 'Kurang' : 'Kelebihan') + '</div><div class="value num">' + rupiah(Math.abs(kurang)) + '</div>' +
+            '<div class="hint">' + (sisaHari ? 'sisa ' + sisaHari + ' hari' : 'bulan sudah selesai') + '</div></div>' +
+          '<div class="tile' + (onTrack ? ' accent' : ' warn') + '"><div class="label">Proyeksi akhir bulan</div>' +
+            '<div class="value num">' + rupiah(proyeksi) + '</div>' +
+            '<div class="hint ' + (onTrack ? 'up' : 'down') + '">' + (onTrack ? 'di jalur yang benar' : 'berisiko meleset') + '</div></div>' +
+        '</div>' +
+        '<div class="progress' + (pctAll >= 100 ? '' : '') + '" aria-hidden="true"><div class="fill" style="width:' +
+          Math.min(100, pctAll) + '%;background:' + (pctAll >= 100 ? 'var(--herb)' : 'var(--kriuk)') + '"></div></div>' +
+        '<p class="sub" style="margin-top:10px">' +
+          (kurang <= 0
+            ? 'Target bulan ini sudah tercapai, lebih ' + rupiah(-kurang) + '.'
+            : (sisaHari
+                ? 'Perlu <strong>' + rupiah(Math.round(perHari)) + ' per hari</strong> selama ' + sisaHari +
+                  ' hari tersisa. Laju sekarang ' + rupiah(Math.round(lajuSekarang)) + '/hari.'
+                : 'Bulan sudah berakhir dengan kekurangan ' + rupiah(kurang) + '.')) +
+        '</p>' +
+        '<p class="group-label">Per cabang</p>' +
+        '<div class="brk">' + BRANCHES.map(function (b) {
+          var t = target[b.key], r = realisasi[b.key];
+          var p = t ? Math.round((r / t) * 100) : 0;
+          return '<div class="r">' +
+            '<span class="swatch" style="background:' + b.color + '"></span>' +
+            '<span class="nm">' + b.label + (t ? '' : ' <span class="flat">(target belum diisi)</span>') + '</span>' +
+            '<span class="vl">' + rupiah(r) + (t ? ' / ' + rupiahShort(t) : '') + '</span>' +
+            '<span class="pc ' + (p >= 100 ? 'up' : '') + '">' + (t ? p + '%' : '–') + '</span>' +
+            '<span class="bar"><i style="width:' + Math.min(100, p) + '%;background:' +
+              (p >= 100 ? 'var(--herb)' : b.color) + '"></i></span>' +
+            '</div>';
+        }).join('') + '</div>';
+    }
+
+    // isi form dengan target yang sedang berlaku
+    BRANCHES.forEach(function (b) {
+      var inp = document.getElementById('tg-' + b.key);
+      if (inp) inp.value = target[b.key] || '';
+    });
+    var lab = document.getElementById('tg-month-label');
+    if (lab) lab.textContent = monthName(y, m);
+  }
+
+  function wireTarget() {
+    var form = document.getElementById('target-form');
+    if (!form) return;
+    onSubmit('target-form', async function () {
+      var mk = dTo.slice(0, 7);
+      for (var i = 0; i < BRANCHES.length; i++) {
+        var b = BRANCHES[i];
+        var v = Number(document.getElementById('tg-' + b.key).value) || 0;
+        var res = await DB.saveTarget(mk, b.key, v);
+        if (res && res.error) { say('target-saved', 'Gagal: ' + res.error.message); return; }
+      }
+      say('target-saved', 'Target tersimpan');
+      renderTarget();
+    });
   }
 
   async function renderRecap(cur, prev, sales, ads, notes) {
@@ -1418,6 +1540,7 @@
 
     wireForms();
     wireWork();
+    wireTarget();
     // di-await supaya kegagalan render ikut tertangkap try/catch di boot(),
     // bukan jadi unhandled rejection yang tidak terlihat siapa pun
     if (perm.money) await renderNumbers();

@@ -62,3 +62,26 @@ from tasks t
 left join profiles pa on pa.id = t.assignee_id
 left join profiles pc on pc.id = t.created_by
 order by t.deadline;
+
+-- ============================================================
+-- 5. TARGET OMZET BULANAN PER CABANG
+--    Dipasang per bulan per cabang, supaya dashboard bisa menghitung
+--    sudah berapa persen tercapai dan perlu berapa per hari lagi.
+-- ============================================================
+create table targets (
+  month text not null,                 -- format '2026-09'
+  branch text not null,                -- 'gading_serpong' | 'kelapa_gading'
+  revenue_target numeric not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (month, branch)
+);
+
+alter table targets enable row level security;
+
+-- Target itu angka omzet, jadi hanya owner & lead yang boleh melihat
+-- maupun mengubahnya.
+create policy "target: lihat" on targets for select using (sees_money());
+create policy "target: isi" on targets for insert with check (sees_money());
+create policy "target: ubah" on targets for update using (sees_money()) with check (sees_money());
+
+select 'Migrasi selesai. Tabel tasks dan targets siap dipakai.' as hasil;
