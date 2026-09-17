@@ -234,26 +234,56 @@
       return await sb.from('social_daily').upsert(Object.assign({ entry_date: date }, vals), { onConflict: 'entry_date' });
     },
 
-    // --- jadwal kerja ---
-    // RLS sudah membatasi ke milik sendiri kecuali owner/lead, jadi tidak perlu
-    // filter user_id di sini.
-    async getWork() {
-      var res = await sb.from('work_items').select('*').order('work_date');
+    // --- task ---
+    // RLS sudah membatasi: PIC-nya, pemberi tugasnya, atau owner/lead.
+    async getTasks() {
+      var res = await sb.from('tasks').select('*').order('deadline');
       return res.data || [];
     },
-    async addWork(item) {
-      return await sb.from('work_items').insert(Object.assign({ user_id: me.id }, item));
+    async addTask(item) {
+      return await sb.from('tasks').insert(Object.assign({ created_by: me.id }, item));
     },
-    async setWorkDone(id, done) {
-      return await sb.from('work_items').update({ done: done }).eq('id', id);
+    async setTaskStatus(id, status) {
+      var patch = { status: status, done_at: status === 'done' ? new Date().toISOString() : null };
+      return await sb.from('tasks').update(patch).eq('id', id);
     },
-    async deleteWork(id) {
-      return await sb.from('work_items').delete().eq('id', id);
+    async deleteTask(id) {
+      return await sb.from('tasks').delete().eq('id', id);
+    },
+    // daftar rekan setim, untuk memilih PIC
+    async getMembers() {
+      var res = await sb.from('profiles').select('id,name,role').order('name');
+      return res.data || [];
     }
   };
 
   // ---------- helper hitung ----------
-  var range = 7;
+  // Rentang tanggal yang sedang dilihat. Default 30 hari terakhir.
+  var dFrom = shiftDays(-29), dTo = dateStr();
+  var range = 30;   // jumlah hari dalam rentang, dipakai untuk rata-rata & pembanding
+
+  function daysBetween(a, b) {
+    return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000) + 1;
+  }
+  function datesBetween(a, b) {
+    var out = [], d = new Date(a + 'T00:00:00'), end = new Date(b + 'T00:00:00');
+    while (d <= end) {
+      out.push(dateStr(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+  // tanggal periode sekarang + periode sebelumnya yang sama panjang, untuk perbandingan
+  function periode() {
+    var cur = datesBetween(dFrom, dTo);
+    var n = cur.length;
+    var prevTo = dateStr(new Date(new Date(dFrom + 'T00:00:00').getTime() - 86400000));
+    var prevFrom = dateStr(new Date(new Date(prevTo + 'T00:00:00').getTime() - (n - 1) * 86400000));
+    return { cur: cur, prev: datesBetween(prevFrom, prevTo) };
+  }
+  function labelPeriode() {
+    return longDate(dFrom) + ' – ' + longDate(dTo) + ' · ' + range + ' hari';
+  }
   var recapText = '';
 
   function branchTotal(s) { return s.esb + s.gojek_grab + s.paper; }
@@ -429,8 +459,9 @@
 
   // ---------- render angka (penjualan / iklan / ringkasan) ----------
   async function renderNumbers() {
-    var dates = lastNDates(range * 2);
-    var cur = dates.slice(range), prev = dates.slice(0, range);
+    var p = periode();
+    var cur = p.cur, prev = p.prev;
+    var dates = prev.concat(cur);
     var sales = await DB.getSales(dates);
     var ads = await DB.getAds(dates);
     var notes = await DB.getNotes(dates);
@@ -636,7 +667,29 @@
       : '<li><span class="empty">Belum ada promo dicatat.</span></li>';
   }
 
+  // Satu baris rincian: nama, nilai, persentase, dan batang proporsi.
+  function brkRow(label, color, value, total, fmt) {
+    var p = total ? Math.round((value / total) * 100) : 0;
+    return '<div class="r">' +
+      '<span class="swatch" style="background:' + color + '"></span>' +
+      '<span class="nm">' + label + '</span>' +
+      '<span class="vl">' + fmt(value) + '</span>' +
+      '<span class="pc">' + p + '%</span>' +
+      '<span class="bar"><i style="width:' + p + '%;background:' + color + '"></i></span>' +
+      '</div>';
+  }
+  function brkWrap(html) { return '<div class="brk">' + (html || '<span class="none">Belum ada data.</span>') + '</div>'; }
+
+  function deltaHtml(now, before, suffix) {
+    var p = pct(now, before);
+    if (p === null) return '<span class="flat">belum ada pembanding periode lalu</span>';
+    var naik = p >= 0;
+    return '<span class="' + (naik ? 'up' : 'down') + '">' + (naik ? '↑ +' : '↓ ') + p + '%</span>' +
+      ' <span class="flat">vs periode lalu' + (suffix || '') + '</span>';
+  }
+
   async function renderRecap(cur, prev, sales, ads, notes) {
+    var akhir = cur[cur.length - 1];
     var revNow = sumRange(cur, sales), revPrev = sumRange(prev, sales);
     var revPct = pct(revNow, revPrev);
     var spendNow = cur.reduce(function (a, d) { return a + daySpend(ads[d]); }, 0);
@@ -648,131 +701,310 @@
       return acc;
     }, emptyAd()));
 
-    var work = await DB.getWork();
-    var inPeriod = work.filter(function (w) { return w.work_date >= cur[0] && w.work_date <= cur[cur.length - 1]; });
-    var doneCount = inPeriod.filter(function (w) { return w.done; }).length;
-    var workPct = inPeriod.length ? Math.round((doneCount / inPeriod.length) * 100) : 0;
+    document.getElementById('recap-period').textContent = labelPeriode();
 
-    var social = await DB.getSocialHistory(60);
-    var latest = social[social.length - 1], base = null;
-    for (var i = social.length - 1; i >= 0; i--) {
-      if (social[i].entry_date < cur[0]) { base = social[i]; break; }
-    }
-    if (!base) base = social[0];
-
-    document.getElementById('recap-period').textContent =
-      shortLabel(cur[0]) + ' – ' + shortLabel(cur[cur.length - 1]) + ' · dibanding ' + range + ' hari sebelumnya';
-
+    // ---------- KPI utama ----------
     var chip = function (p) {
       if (p === null) return '<div class="hint">belum ada pembanding</div>';
       return '<div class="hint ' + (p >= 0 ? 'up' : 'down') + '">' + (p >= 0 ? '↑ +' : '↓ ') + p + '% vs periode lalu</div>';
     };
+    var tasks = await DB.getTasks();
+    var inPeriod = tasks.filter(function (t) { return t.deadline >= cur[0] && t.deadline <= akhir; });
+    var doneCount = inPeriod.filter(function (t) { return t.status === 'done'; }).length;
+    var taskPct = inPeriod.length ? Math.round((doneCount / inPeriod.length) * 100) : 0;
+    var telat = tasks.filter(function (t) { return t.status !== 'done' && t.deadline < dateStr(); });
+
     document.getElementById('recap-kpi').innerHTML =
       '<div class="tile"><div class="label">Penjualan</div><div class="value num">' + rupiah(revNow) + '</div>' + chip(revPct) + '</div>' +
       '<div class="tile"><div class="label">Biaya iklan</div><div class="value num">' + rupiah(spendNow) + '</div>' + chip(spendPct) + '</div>' +
-      '<div class="tile accent"><div class="label">ROAS</div><div class="value num">' + (spendNow ? roas.toFixed(1).replace('.', ',') + '×' : '—') + '</div>' +
-        '<div class="hint">' + (spendNow ? 'per Rp1 iklan' : 'isi biaya iklan dulu') + '</div></div>' +
-      '<div class="tile"><div class="label">Pekerjaan Sulthan</div><div class="value num">' + (inPeriod.length ? workPct + '%' : '—') + '</div>' +
-        '<div class="hint">' + (inPeriod.length ? doneCount + ' dari ' + inPeriod.length + ' selesai' : 'belum ada jadwal') + '</div></div>';
+      '<div class="tile accent"><div class="label">ROAS blended</div><div class="value num">' +
+        (spendNow ? roas.toFixed(1).replace('.', ',') + '×' : '—') + '</div>' +
+        '<div class="hint">' + (spendNow ? 'tiap Rp1 iklan → ' + rupiah(roas) : 'belum ada biaya iklan') + '</div></div>' +
+      '<div class="tile"><div class="label">Rasio iklan</div><div class="value num">' +
+        (revNow ? ((spendNow / revNow) * 100).toFixed(1).replace('.', ',') + '%' : '—') + '</div>' +
+        '<div class="hint">porsi iklan dari penjualan</div></div>' +
+      '<div class="tile"><div class="label">Rata-rata harian</div><div class="value num">' + rupiah(Math.round(revNow / range)) + '</div>' +
+        '<div class="hint">penjualan per hari</div></div>' +
+      '<div class="tile' + (telat.length ? ' warn' : '') + '"><div class="label">Task lewat deadline</div><div class="value num">' + telat.length + '</div>' +
+        '<div class="hint">' + (telat.length ? 'perlu ditindak' : 'aman') + '</div></div>';
 
-    var totals = cur.map(function (d) { return { d: d, v: dayTotal(sales[d]) }; }).filter(function (x) { return x.v > 0; });
-    var best = totals.slice().sort(function (a, b) { return b.v - a.v; })[0];
-    var worst = totals.slice().sort(function (a, b) { return a.v - b.v; })[0];
-    var bt = BRANCHES.map(function (b) {
-      return { label: b.label, v: cur.reduce(function (s, d) { return s + branchTotal(sales[d][b.key]); }, 0) };
+    // ---------- kartu PENJUALAN ----------
+    document.getElementById('ov-sales-sub').textContent = labelPeriode();
+    document.getElementById('ov-sales-total').textContent = rupiah(revNow);
+    document.getElementById('ov-sales-delta').innerHTML = deltaHtml(revNow, revPrev) +
+      (revPrev ? ' <span class="flat">(' + rupiah(revPrev) + ')</span>' : '');
+
+    var srcTot = SOURCES.map(function (s) {
+      return {
+        label: s.label, color: s.color,
+        v: cur.reduce(function (sum, d) {
+          return sum + BRANCHES.reduce(function (a, b) { return a + sales[d][b.key][s.key]; }, 0);
+        }, 0)
+      };
     }).sort(function (a, b) { return b.v - a.v; });
+    document.getElementById('ov-sales-src').innerHTML = brkWrap(
+      srcTot.filter(function (s) { return s.v; })
+        .map(function (s) { return brkRow(s.label, s.color, s.v, revNow, rupiah); }).join('')
+    );
 
-    var facts = [];
-    if (best) facts.push('Hari terbaik: <strong>' + dayInitial(best.d) + ' ' + shortLabel(best.d) + '</strong> — ' + rupiah(best.v) +
-      (worst && worst.d !== best.d ? ' · terendah ' + dayInitial(worst.d) + ' ' + shortLabel(worst.d) + ' (' + rupiah(worst.v) + ')' : ''));
-    if (bt[0].v) facts.push('Cabang teratas: <strong>' + bt[0].label + '</strong> ' + rupiah(bt[0].v) + ' vs ' + bt[1].label + ' ' + rupiah(bt[1].v));
-    if (revNow) facts.push('Rata-rata harian: <strong>' + rupiah(Math.round(revNow / range)) + '</strong>');
-    if (latest) {
-      facts.push('Follower: ' + PLATFORMS.map(function (p) {
-        var n = Number(latest[p.key]) || 0, w = base ? Number(base[p.key]) || 0 : 0, diff = n - w;
-        return p.label + ' <strong>' + n.toLocaleString('id-ID') + '</strong>' + (diff ? ' (' + (diff > 0 ? '+' : '') + diff.toLocaleString('id-ID') + ')' : '');
-      }).join(' · '));
+    var brTot = BRANCHES.map(function (b) {
+      return {
+        label: b.label, color: b.color,
+        v: cur.reduce(function (s, d) { return s + branchTotal(sales[d][b.key]); }, 0)
+      };
+    }).sort(function (a, b) { return b.v - a.v; });
+    document.getElementById('ov-sales-branch').innerHTML = brkWrap(
+      brTot.filter(function (b) { return b.v; })
+        .map(function (b) { return brkRow(b.label, b.color, b.v, revNow, rupiah); }).join('')
+    );
+
+    // ---------- kartu IKLAN ----------
+    document.getElementById('ov-ads-sub').textContent = labelPeriode();
+    document.getElementById('ov-ads-total').textContent = rupiah(spendNow);
+    document.getElementById('ov-ads-delta').innerHTML = deltaHtml(spendNow, spendPrev) +
+      (spendPrev ? ' <span class="flat">(' + rupiah(spendPrev) + ')</span>' : '');
+
+    var chTot = CHANNELS.map(function (c) {
+      return { label: c.label, color: c.color, v: cur.reduce(function (a, d) { return a + ads[d][c.key].spend; }, 0) };
+    }).sort(function (a, b) { return b.v - a.v; });
+    document.getElementById('ov-ads-src').innerHTML = brkWrap(
+      chTot.filter(function (c) { return c.v; })
+        .map(function (c) { return brkRow(c.label, c.color, c.v, spendNow, rupiah); }).join('')
+    );
+
+    var dec = function (n, d) { return (Number(n) || 0).toFixed(d === undefined ? 2 : d).replace('.', ','); };
+    document.getElementById('ov-ads-perf').innerHTML = spendNow
+      ? '<div class="split">' +
+          '<div class="tile"><div class="label">Impresi</div><div class="value num">' + adTotals.impressions.toLocaleString('id-ID') + '</div></div>' +
+          '<div class="tile"><div class="label">Klik</div><div class="value num">' + adTotals.clicks.toLocaleString('id-ID') + '</div>' +
+            '<div class="hint">CTR ' + (adTotals.ctr ? dec(adTotals.ctr) + '%' : '—') + '</div></div>' +
+          '<div class="tile"><div class="label">CPC</div><div class="value num">' + (adTotals.cpc ? rupiah(adTotals.cpc) : '—') + '</div>' +
+            '<div class="hint">CPM ' + (adTotals.cpm ? rupiah(adTotals.cpm) : '—') + '</div></div>' +
+          '<div class="tile"><div class="label">Hasil</div><div class="value num">' + adTotals.results.toLocaleString('id-ID') + '</div>' +
+            '<div class="hint">' + (adTotals.cpa ? rupiah(adTotals.cpa) + ' per hasil' : 'belum ada konversi') + '</div></div>' +
+        '</div>'
+      : '<span class="none" style="color:var(--ink-faint);font-size:13px">Tidak ada belanja iklan di periode ini.</span>';
+
+    // ---------- kartu SOCIAL MEDIA ----------
+    var social = await DB.getSocialHistory(200);
+    var dalam = social.filter(function (s) { return s.entry_date >= cur[0] && s.entry_date <= akhir; });
+    var latest = dalam[dalam.length - 1] || social[social.length - 1];
+    var base = null;
+    for (var i = social.length - 1; i >= 0; i--) {
+      if (social[i].entry_date < cur[0]) { base = social[i]; break; }
     }
-    document.getElementById('recap-facts').innerHTML = facts.map(function (f) { return '<div>' + f + '</div>'; }).join('');
+    if (!base) base = dalam[0] || social[0];
 
-    // teks rekap untuk ditempel ke WhatsApp
+    var totNow = latest ? PLATFORMS.reduce(function (a, p) { return a + (Number(latest[p.key]) || 0); }, 0) : 0;
+    var totBase = base ? PLATFORMS.reduce(function (a, p) { return a + (Number(base[p.key]) || 0); }, 0) : 0;
+    document.getElementById('ov-soc-sub').textContent = latest
+      ? 'Dicatat terakhir ' + longDate(latest.entry_date) : 'Belum ada data';
+    document.getElementById('ov-soc-total').textContent = totNow.toLocaleString('id-ID');
+    document.getElementById('ov-soc-delta').innerHTML = latest && base && base !== latest
+      ? (function () {
+          var d = totNow - totBase;
+          return '<span class="' + (d >= 0 ? 'up' : 'down') + '">' + (d >= 0 ? '+' : '') + d.toLocaleString('id-ID') + ' follower</span>' +
+            ' <span class="flat">sejak ' + shortLabel(base.entry_date) + '</span>';
+        })()
+      : '<span class="flat">total follower semua platform</span>';
+
+    document.getElementById('ov-soc-src').innerHTML = brkWrap(
+      latest ? PLATFORMS.map(function (p) {
+        var n = Number(latest[p.key]) || 0;
+        var w = base ? Number(base[p.key]) || 0 : 0;
+        var d = n - w;
+        var pp = w ? Math.round((d / w) * 1000) / 10 : null;
+        var share = totNow ? Math.round((n / totNow) * 100) : 0;
+        return '<div class="r">' +
+          '<span class="swatch" style="background:' + p.line + '"></span>' +
+          '<span class="nm">' + p.label + '</span>' +
+          '<span class="vl">' + n.toLocaleString('id-ID') + '</span>' +
+          '<span class="pc ' + (d > 0 ? 'up' : d < 0 ? 'down' : '') + '">' +
+            (d ? (d > 0 ? '+' : '') + d.toLocaleString('id-ID') : '–') + '</span>' +
+          '<span class="bar"><i style="width:' + share + '%;background:' + p.line + '"></i></span>' +
+          (pp !== null && d ? '<span class="pc ' + (d > 0 ? 'up' : 'down') + '" style="grid-column:3/-1;text-align:left;width:auto">' +
+            (pp > 0 ? '+' : '') + String(pp).replace('.', ',') + '% pertumbuhan</span>' : '') +
+          '</div>';
+      }).join('') : ''
+    );
+
+    // ---------- kartu TASK ----------
+    var anggota = await DB.getMembers();
+    var namaOf = {};
+    anggota.forEach(function (m) { namaOf[m.id] = m.name; });
+    document.getElementById('ov-task-sub').textContent = inPeriod.length
+      ? inPeriod.length + ' task dengan deadline di periode ini' : 'Belum ada task di periode ini';
+    document.getElementById('ov-task-total').textContent = (inPeriod.length ? taskPct : 0) + '%';
+    document.getElementById('ov-task-delta').innerHTML = inPeriod.length
+      ? '<span class="' + (taskPct >= 70 ? 'up' : 'down') + '">' + doneCount + ' dari ' + inPeriod.length + ' selesai</span>' +
+        (telat.length ? ' <span class="down">· ' + telat.length + ' lewat deadline</span>' : '')
+      : '<span class="flat">belum ada task berdeadline di periode ini</span>';
+
+    var perOrang = {};
+    inPeriod.forEach(function (t) {
+      var k = t.assignee_id || 'lain';
+      if (!perOrang[k]) perOrang[k] = { total: 0, done: 0 };
+      perOrang[k].total++;
+      if (t.status === 'done') perOrang[k].done++;
+    });
+    var keys = Object.keys(perOrang).sort(function (a, b) { return perOrang[b].total - perOrang[a].total; });
+    document.getElementById('ov-task-src').innerHTML = brkWrap(
+      keys.map(function (k) {
+        var o = perOrang[k];
+        var p = Math.round((o.done / o.total) * 100);
+        return '<div class="r">' +
+          '<span class="swatch" style="background:' + (p >= 70 ? '#4f7a36' : '#d99208') + '"></span>' +
+          '<span class="nm">' + esc(namaOf[k] || 'Belum ada PIC') + '</span>' +
+          '<span class="vl">' + o.done + '/' + o.total + '</span>' +
+          '<span class="pc">' + p + '%</span>' +
+          '<span class="bar"><i style="width:' + p + '%;background:' + (p >= 70 ? '#4f7a36' : '#d99208') + '"></i></span>' +
+          '</div>';
+      }).join('')
+    );
+
+    // ---------- catatan penting ----------
+    var ins = [];
+    var harian = cur.map(function (d) { return { d: d, v: dayTotal(sales[d]) }; }).filter(function (x) { return x.v > 0; });
+    var best = harian.slice().sort(function (a, b) { return b.v - a.v; })[0];
+    var worst = harian.slice().sort(function (a, b) { return a.v - b.v; })[0];
+    if (best) {
+      ins.push('<span class="ic">📈</span><span>Penjualan tertinggi <b>' + dayInitial(best.d) + ', ' + longDate(best.d) +
+        '</b> sebesar <b>' + rupiah(best.v) + '</b>' +
+        (worst && worst.d !== best.d ? ', terendah ' + dayInitial(worst.d) + ' ' + shortLabel(worst.d) + ' (' + rupiah(worst.v) + ')' : '') + '</span>');
+    }
+    if (brTot[0] && brTot[0].v && brTot[1]) {
+      var selisih = brTot[0].v - brTot[1].v;
+      ins.push('<span class="ic">🏪</span><span><b>' + brTot[0].label + '</b> memimpin dengan selisih <b>' +
+        rupiah(selisih) + '</b> dari ' + brTot[1].label + '</span>');
+    }
+    if (srcTot[0] && srcTot[0].v) {
+      ins.push('<span class="ic">🧾</span><span>Sumber penjualan terbesar <b>' + srcTot[0].label + '</b> — ' +
+        Math.round((srcTot[0].v / revNow) * 100) + '% dari total</span>');
+    }
+    if (!spendNow) {
+      ins.push('<span class="ic">📣</span><span>Tidak ada belanja iklan di periode ini, jadi ROAS dan CPC belum bisa dinilai</span>');
+    } else if (revNow) {
+      var rasio = (spendNow / revNow) * 100;
+      ins.push('<span class="ic">💸</span><span>Iklan memakan <b>' + dec(rasio, 1) + '%</b> dari penjualan' +
+        (rasio > 15 ? ' — cukup tinggi untuk usaha makanan, perlu dicek efisiensinya' : ' — masih dalam batas wajar') + '</span>');
+    }
+    var promoHari = cur.filter(function (d) { return notes[d]; });
+    if (promoHari.length) {
+      ins.push('<span class="ic">🎉</span><span><b>' + promoHari.length + ' hari</b> ada promo berjalan: ' +
+        promoHari.slice(0, 3).map(function (d) { return esc(notes[d]) + ' (' + shortLabel(d) + ')'; }).join(', ') +
+        (promoHari.length > 3 ? ', dan lainnya' : '') + '</span>');
+    }
+    if (telat.length) {
+      ins.push('<span class="ic">⏰</span><span><b>' + telat.length + ' task</b> sudah lewat deadline dan belum selesai: ' +
+        telat.slice(0, 3).map(function (t) { return esc(t.title); }).join(', ') +
+        (telat.length > 3 ? ', dan lainnya' : '') + '</span>');
+    }
+    var kosong = cur.filter(function (d) { return !dayTotal(sales[d]); }).length;
+    if (kosong) {
+      ins.push('<span class="ic">📭</span><span><b>' + kosong + ' hari</b> belum ada data penjualan tercatat di periode ini — angkanya bisa jadi lebih rendah dari kenyataan</span>');
+    }
+    document.getElementById('ov-insights').innerHTML = ins.length
+      ? ins.map(function (x) { return '<li>' + x + '</li>'; }).join('')
+      : '<li><span class="ic">🙂</span><span>Belum ada cukup data untuk disimpulkan di periode ini.</span></li>';
+
+    // ---------- teks rekap untuk WhatsApp ----------
     var L = [];
-    L.push('*Rekap Crackling — ' + shortLabel(cur[0]) + ' s/d ' + shortLabel(cur[cur.length - 1]) + '*', '');
+    L.push('*Rekap Crackling — ' + longDate(cur[0]) + ' s/d ' + longDate(akhir) + '*', '');
     L.push('*PENJUALAN*');
     L.push('Total: ' + rupiah(revNow) + (revPct !== null ? ' (' + (revPct >= 0 ? '+' : '') + revPct + '% vs periode lalu)' : ''));
-    BRANCHES.forEach(function (b) {
-      var v = cur.reduce(function (s, d) { return s + branchTotal(sales[d][b.key]); }, 0);
-      L.push('• ' + b.label + ': ' + rupiah(v) + (revNow ? ' (' + Math.round((v / revNow) * 100) + '%)' : ''));
-    });
-    SOURCES.forEach(function (s) {
-      L.push('• ' + s.label + ': ' + rupiah(cur.reduce(function (sum, d) {
-        return sum + BRANCHES.reduce(function (a, b) { return a + sales[d][b.key][s.key]; }, 0);
-      }, 0)));
-    });
+    L.push('Rata-rata harian: ' + rupiah(Math.round(revNow / range)));
+    brTot.forEach(function (b) { if (b.v) L.push('• ' + b.label + ': ' + rupiah(b.v) + ' (' + Math.round((b.v / revNow) * 100) + '%)'); });
+    srcTot.forEach(function (s) { if (s.v) L.push('• ' + s.label + ': ' + rupiah(s.v) + ' (' + Math.round((s.v / revNow) * 100) + '%)'); });
     if (best) L.push('Hari terbaik: ' + dayInitial(best.d) + ' ' + shortLabel(best.d) + ' — ' + rupiah(best.v));
-    L.push('Rata-rata harian: ' + rupiah(Math.round(revNow / range)), '');
-    L.push('*IKLAN*');
+    L.push('', '*IKLAN*');
     L.push('Total biaya: ' + rupiah(spendNow) + (spendPct !== null ? ' (' + (spendPct >= 0 ? '+' : '') + spendPct + '%)' : ''));
-    CHANNELS.forEach(function (c) {
-      var cs = cur.reduce(function (a, d) { return a + ads[d][c.key].spend; }, 0);
-      if (cs) L.push('• ' + c.label + ': ' + rupiah(cs) + (spendNow ? ' (' + Math.round((cs / spendNow) * 100) + '%)' : ''));
-    });
+    chTot.forEach(function (c) { if (c.v) L.push('• ' + c.label + ': ' + rupiah(c.v) + ' (' + Math.round((c.v / spendNow) * 100) + '%)'); });
     if (adTotals.impressions || adTotals.clicks) {
       L.push('Impresi ' + adTotals.impressions.toLocaleString('id-ID') + ' · Klik ' + adTotals.clicks.toLocaleString('id-ID') +
-        (adTotals.ctr ? ' · CTR ' + adTotals.ctr.toFixed(2).replace('.', ',') + '%' : ''));
+        (adTotals.ctr ? ' · CTR ' + dec(adTotals.ctr) + '%' : ''));
       L.push('CPC ' + (adTotals.cpc ? rupiah(adTotals.cpc) : '—') + ' · CPM ' + (adTotals.cpm ? rupiah(adTotals.cpm) : '—'));
     }
-    if (adTotals.results) {
-      L.push('Hasil ' + adTotals.results.toLocaleString('id-ID') + ' · Biaya per hasil ' + rupiah(adTotals.cpa));
+    if (adTotals.results) L.push('Hasil ' + adTotals.results.toLocaleString('id-ID') + ' · Biaya per hasil ' + rupiah(adTotals.cpa));
+    if (spendNow) {
+      L.push('ROAS platform: ' + (adTotals.roas ? dec(adTotals.roas, 1) + '×' : '—') +
+        ' · ROAS blended: ' + dec(roas, 1) + '×' +
+        (revNow ? ' · rasio iklan ' + dec((spendNow / revNow) * 100, 1) + '%' : ''));
     }
-    L.push('ROAS platform: ' + (adTotals.roas ? adTotals.roas.toFixed(1).replace('.', ',') + '×' : '—') +
-      ' · ROAS blended: ' + (spendNow ? roas.toFixed(1).replace('.', ',') + '×' : '—') +
-      (revNow && spendNow ? ' · rasio iklan ' + ((spendNow / revNow) * 100).toFixed(1).replace('.', ',') + '%' : ''));
-    var promos = cur.filter(function (d) { return notes[d]; });
-    if (promos.length) {
+    if (promoHari.length) {
       L.push('Promo:');
-      promos.forEach(function (d) { L.push('• ' + notes[d] + ' (' + shortLabel(d) + ')'); });
+      promoHari.forEach(function (d) { L.push('• ' + notes[d] + ' (' + shortLabel(d) + ')'); });
     }
     L.push('', '*SOCIAL MEDIA*');
     if (latest) {
       PLATFORMS.forEach(function (p) {
-        var n = Number(latest[p.key]) || 0, w = base ? Number(base[p.key]) || 0 : 0, diff = n - w;
-        L.push('• ' + p.label + ': ' + n.toLocaleString('id-ID') + (diff ? ' (' + (diff > 0 ? '+' : '') + diff.toLocaleString('id-ID') + ')' : ''));
+        var n = Number(latest[p.key]) || 0, w = base ? Number(base[p.key]) || 0 : 0, d = n - w;
+        L.push('• ' + p.label + ': ' + n.toLocaleString('id-ID') + (d ? ' (' + (d > 0 ? '+' : '') + d.toLocaleString('id-ID') + ')' : ''));
       });
+      L.push('Total follower: ' + totNow.toLocaleString('id-ID'));
     } else L.push('Belum ada data.');
-    L.push('', '*JADWAL KERJA — SULTHAN*');
-    L.push(inPeriod.length ? 'Selesai ' + doneCount + ' dari ' + inPeriod.length + ' pekerjaan (' + workPct + '%)' : 'Belum ada jadwal di periode ini.');
-    var late = work.filter(function (w) { return !w.done && w.work_date < dateStr(); });
-    if (late.length) L.push('Lewat tanggal & belum selesai: ' + late.length);
+    L.push('', '*TASK TIM*');
+    L.push(inPeriod.length ? 'Selesai ' + doneCount + ' dari ' + inPeriod.length + ' task (' + taskPct + '%)' : 'Belum ada task berdeadline di periode ini.');
+    keys.forEach(function (k) {
+      L.push('• ' + (namaOf[k] || 'Tanpa PIC') + ': ' + perOrang[k].done + '/' + perOrang[k].total);
+    });
+    if (telat.length) L.push('Lewat deadline: ' + telat.length + ' task');
     recapText = L.join('\n');
   }
 
-  // ---------- jadwal kerja ----------
-  var calY, calM, selectedDate = dateStr();
 
-  function workItemHtml(w, showDate) {
-    var late = !w.done && w.work_date < dateStr();
-    return '<li class="' + (w.done ? 'done' : '') + '">' +
-      '<input type="checkbox" data-work="' + w.id + '"' + (w.done ? ' checked' : '') + ' aria-label="' + esc(w.title) + '">' +
-      '<span class="body"><span class="t">' + esc(w.title) + '</span>' +
-      '<span class="m"><span class="chip ' + w.scope + '">' + (w.scope === 'panjang' ? 'jangka panjang' : 'jangka pendek') + '</span>' +
-      (showDate ? ' ' + longDate(w.work_date) : '') +
-      (late ? ' <span class="chip late">lewat tanggal</span>' : '') + '</span></span>' +
-      '<button class="del" data-delwork="' + w.id + '" aria-label="Hapus pekerjaan: ' + esc(w.title) + '" title="Hapus">&times;</button></li>';
+  // ---------- task ----------
+  var calY, calM, selectedDate = dateStr();
+  var taskView = 'semua';          // semua | saya | diberikan
+  var members = [];                // daftar rekan setim
+  var nameOf = {};                 // id -> nama
+
+  var STATUS_LABEL = { todo: 'Belum dikerjakan', progress: 'Sedang jalan', done: 'Selesai' };
+
+  function taskFilter(list) {
+    if (taskView === 'saya') return list.filter(function (t) { return t.assignee_id === me.id; });
+    if (taskView === 'diberikan') return list.filter(function (t) { return t.created_by === me.id; });
+    return list;
   }
 
-  function wireWorkList(el) {
-    el.querySelectorAll('[data-work]').forEach(function (cb) {
-      cb.addEventListener('change', async function () {
-        await DB.setWorkDone(cb.getAttribute('data-work'), cb.checked);
+  function taskHtml(t, showDate) {
+    var telat = t.status !== 'done' && t.deadline < dateStr();
+    var pic = nameOf[t.assignee_id] || 'Belum ada PIC';
+    var dari = nameOf[t.created_by] || '—';
+    // PIC dan pemberi tugas boleh mengubah status; penghapusan hanya untuk pemberi/owner/lead
+    var bolehHapus = t.created_by === me.id || perm.money;
+    return '<li class="' + (t.status === 'done' ? 'done' : '') + '">' +
+      '<span class="body">' +
+        '<span class="t">' + esc(t.title) + '</span>' +
+        (t.detail ? '<span class="m">' + esc(t.detail) + '</span>' : '') +
+        '<span class="meta-row">' +
+          '<select class="stat" data-status="' + t.id + '" aria-label="Status task">' +
+            ['todo', 'progress', 'done'].map(function (s) {
+              return '<option value="' + s + '"' + (t.status === s ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>';
+            }).join('') +
+          '</select>' +
+          '<span class="chip pic">PIC: ' + esc(pic) + '</span>' +
+          '<span class="chip from">dari ' + esc(dari) + '</span>' +
+          '<span class="chip ' + t.scope + '">' + (t.scope === 'panjang' ? 'jangka panjang' : 'jangka pendek') + '</span>' +
+          (showDate ? '<span class="chip ' + (telat ? 'late' : 'todo') + '">deadline ' + longDate(t.deadline) + '</span>'
+                    : (telat ? '<span class="chip late">lewat deadline</span>' : '')) +
+        '</span>' +
+      '</span>' +
+      (bolehHapus ? '<button class="del" data-deltask="' + t.id + '" aria-label="Hapus task: ' + esc(t.title) + '" title="Hapus">&times;</button>' : '') +
+      '</li>';
+  }
+
+  function wireTaskList(el) {
+    el.querySelectorAll('[data-status]').forEach(function (sel) {
+      sel.addEventListener('change', async function () {
+        await DB.setTaskStatus(sel.getAttribute('data-status'), sel.value);
         renderWork();
         refresh();
       });
     });
-    el.querySelectorAll('[data-delwork]').forEach(function (btn) {
+    el.querySelectorAll('[data-deltask]').forEach(function (btn) {
       btn.addEventListener('click', async function () {
-        if (!confirm('Hapus pekerjaan ini? Tidak bisa dibatalkan.')) return;
-        await DB.deleteWork(btn.getAttribute('data-delwork'));
+        if (!confirm('Hapus task ini? Tidak bisa dibatalkan.')) return;
+        await DB.deleteTask(btn.getAttribute('data-deltask'));
         renderWork();
         refresh();
       });
@@ -780,40 +1012,53 @@
   }
 
   async function renderWork() {
-    var work = await DB.getWork();
+    var all = await DB.getTasks();
+    var tasks = taskFilter(all);
     var today = dateStr();
+
+    if (!members.length) {
+      members = await DB.getMembers();
+      members.forEach(function (m) { nameOf[m.id] = m.name; });
+      var sel = document.getElementById('w-assignee');
+      sel.innerHTML = members.map(function (m) {
+        return '<option value="' + m.id + '"' + (m.id === me.id ? ' selected' : '') + '>' +
+          esc(m.name) + ' — ' + (ROLE_LABEL[m.role] || m.role) + '</option>';
+      }).join('');
+    }
 
     // statistik
     var weekEnd = shiftDays(6);
-    var thisWeek = work.filter(function (w) { return w.work_date >= today && w.work_date <= weekEnd; });
-    var late = work.filter(function (w) { return !w.done && w.work_date < today; });
-    var longTerm = work.filter(function (w) { return w.scope === 'panjang' && !w.done; });
-    var doneWeek = thisWeek.filter(function (w) { return w.done; }).length;
+    var mingguIni = tasks.filter(function (t) { return t.deadline >= today && t.deadline <= weekEnd && t.status !== 'done'; });
+    var telat = tasks.filter(function (t) { return t.status !== 'done' && t.deadline < today; });
+    var jalan = tasks.filter(function (t) { return t.status === 'progress'; });
+    var panjang = tasks.filter(function (t) { return t.scope === 'panjang' && t.status !== 'done'; });
 
     document.getElementById('work-stats').innerHTML =
-      '<div class="tile"><div class="label">7 hari ke depan</div><div class="value num">' + thisWeek.length + '</div><div class="hint">pekerjaan terjadwal</div></div>' +
-      '<div class="tile"><div class="label">Sudah selesai</div><div class="value num">' + doneWeek + '</div><div class="hint">dari ' + thisWeek.length + ' pekerjaan</div></div>' +
-      '<div class="tile' + (late.length ? ' warn' : '') + '"><div class="label">Lewat tanggal</div><div class="value num">' + late.length + '</div><div class="hint">belum dicentang</div></div>' +
-      '<div class="tile"><div class="label">Jangka panjang</div><div class="value num">' + longTerm.length + '</div><div class="hint">masih berjalan</div></div>';
+      '<div class="tile"><div class="label">Deadline 7 hari ke depan</div><div class="value num">' + mingguIni.length + '</div><div class="hint">belum selesai</div></div>' +
+      '<div class="tile"><div class="label">Sedang dikerjakan</div><div class="value num">' + jalan.length + '</div><div class="hint">status sedang jalan</div></div>' +
+      '<div class="tile' + (telat.length ? ' warn' : '') + '"><div class="label">Lewat deadline</div><div class="value num">' + telat.length + '</div><div class="hint">' + (telat.length ? 'perlu ditindak' : 'aman') + '</div></div>' +
+      '<div class="tile"><div class="label">Jangka panjang</div><div class="value num">' + panjang.length + '</div><div class="hint">masih berjalan</div></div>';
 
-    // kalender
+    // kalender berdasarkan deadline
     if (calY === undefined) { var n = new Date(); calY = n.getFullYear(); calM = n.getMonth(); }
     document.getElementById('cal-month').textContent = monthName(calY, calM);
     document.getElementById('cal-dow').innerHTML = DOW.map(function (d) { return '<div class="cal-dow">' + d + '</div>'; }).join('');
 
     var first = new Date(calY, calM, 1);
-    var offset = (first.getDay() + 6) % 7; // Senin = 0
+    var offset = (first.getDay() + 6) % 7;
     var daysInMonth = new Date(calY, calM + 1, 0).getDate();
     var cells = '';
     for (var b = 0; b < offset; b++) cells += '<div class="cal-cell blank"></div>';
     for (var day = 1; day <= daysInMonth; day++) {
       var ds = dateStr(new Date(calY, calM, day));
-      var items = work.filter(function (w) { return w.work_date === ds; });
-      var dots = items.slice(0, 4).map(function (w) {
-        return '<span class="dot ' + (w.done ? 'done' : w.scope === 'panjang' ? 'long' : '') + '"></span>';
+      var items = tasks.filter(function (t) { return t.deadline === ds; });
+      var dots = items.slice(0, 4).map(function (t) {
+        var kelas = t.status === 'done' ? 'done'
+          : (t.deadline < today ? 'late' : (t.status === 'progress' ? 'progress' : ''));
+        return '<span class="dot ' + kelas + '"></span>';
       }).join('');
       cells += '<button type="button" class="cal-cell' + (ds === today ? ' today' : '') + '" data-day="' + ds + '"' +
-        ' aria-pressed="' + (ds === selectedDate) + '" aria-label="' + longDate(ds) + ', ' + items.length + ' pekerjaan">' +
+        ' aria-pressed="' + (ds === selectedDate) + '" aria-label="' + longDate(ds) + ', ' + items.length + ' task">' +
         '<span class="dnum">' + day + '</span>' +
         '<span class="dots">' + dots + '</span>' +
         (items.length > 4 ? '<span class="more">+' + (items.length - 4) + '</span>' : '') +
@@ -824,33 +1069,34 @@
     grid.querySelectorAll('[data-day]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         selectedDate = btn.getAttribute('data-day');
+        document.getElementById('w-deadline').value = selectedDate;
         renderWork();
       });
     });
 
-    // daftar pekerjaan tanggal terpilih
-    document.getElementById('work-day-title').textContent = 'Pekerjaan ' + longDate(selectedDate);
-    var dayItems = work.filter(function (w) { return w.work_date === selectedDate; });
+    // task pada tanggal terpilih
+    document.getElementById('work-day-title').textContent = 'Task deadline ' + longDate(selectedDate);
+    var dayItems = tasks.filter(function (t) { return t.deadline === selectedDate; });
     document.getElementById('work-day-sub').textContent = dayItems.length
-      ? dayItems.filter(function (w) { return w.done; }).length + ' dari ' + dayItems.length + ' selesai'
-      : 'Belum ada pekerjaan di tanggal ini';
+      ? dayItems.filter(function (t) { return t.status === 'done'; }).length + ' dari ' + dayItems.length + ' selesai'
+      : 'Tidak ada task dengan deadline tanggal ini';
     var list = document.getElementById('work-list');
     list.innerHTML = dayItems.length
-      ? dayItems.map(function (w) { return workItemHtml(w, false); }).join('')
-      : '<li><span class="empty">Kosong. Tambahkan lewat form di bawah.</span></li>';
-    wireWorkList(list);
+      ? dayItems.map(function (t) { return taskHtml(t, false); }).join('')
+      : '<li><span class="empty">Kosong. Buat task baru lewat form di atas.</span></li>';
+    wireTaskList(list);
 
     var lateEl = document.getElementById('work-late');
-    lateEl.innerHTML = late.length
-      ? late.map(function (w) { return workItemHtml(w, true); }).join('')
-      : '<li><span class="empty">Tidak ada yang terlewat. Aman.</span></li>';
-    wireWorkList(lateEl);
+    lateEl.innerHTML = telat.length
+      ? telat.map(function (t) { return taskHtml(t, true); }).join('')
+      : '<li><span class="empty">Tidak ada yang lewat deadline. Aman.</span></li>';
+    wireTaskList(lateEl);
 
     var longEl = document.getElementById('work-long');
-    longEl.innerHTML = longTerm.length
-      ? longTerm.map(function (w) { return workItemHtml(w, true); }).join('')
+    longEl.innerHTML = panjang.length
+      ? panjang.map(function (t) { return taskHtml(t, true); }).join('')
       : '<li><span class="empty">Belum ada rencana jangka panjang.</span></li>';
-    wireWorkList(longEl);
+    wireTaskList(longEl);
   }
 
   function wireWork() {
@@ -862,13 +1108,37 @@
       calM++; if (calM > 11) { calM = 0; calY++; }
       renderWork();
     });
+    document.getElementById('w-deadline').value = selectedDate;
+
+    document.querySelectorAll('[data-taskview]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        taskView = btn.getAttribute('data-taskview');
+        document.querySelectorAll('[data-taskview]').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b === btn));
+        });
+        renderWork();
+      });
+    });
+
     onSubmit('work-form', async function () {
       var input = document.getElementById('w-title');
       var title = input.value.trim();
-      if (!title) return;
-      await DB.addWork({ work_date: selectedDate, title: title, scope: document.getElementById('w-scope').value });
+      var deadline = document.getElementById('w-deadline').value;
+      if (!title || !deadline) return;
+      var res = await DB.addTask({
+        title: title,
+        detail: document.getElementById('w-detail').value.trim(),
+        assignee_id: document.getElementById('w-assignee').value,
+        deadline: deadline,
+        scope: document.getElementById('w-scope').value
+      });
+      if (res && res.error) { say('work-saved', 'Gagal: ' + res.error.message); return; }
       input.value = '';
-      say('work-saved', 'Ditambahkan ke ' + longDate(selectedDate));
+      document.getElementById('w-detail').value = '';
+      var pic = document.getElementById('w-assignee');
+      say('work-saved', 'Task untuk ' + pic.options[pic.selectedIndex].text.split(' — ')[0] +
+        ', deadline ' + longDate(deadline));
+      selectedDate = deadline;
       renderWork();
       refresh();
     });
@@ -1027,18 +1297,55 @@
       say('recap-saved', 'Rekap tersalin — tinggal paste ke grup');
     });
 
-    document.querySelectorAll('[data-range]').forEach(function (btn) {
+    wireDateRange();
+    fillAdsForm();
+    fillNoteForm();
+  }
+
+  // ---------- pemilih rentang tanggal ----------
+  function setRange(from, to) {
+    if (from > to) { var t = from; from = to; to = t; }
+    dFrom = from;
+    dTo = to;
+    range = daysBetween(dFrom, dTo);
+    document.getElementById('dr-from').value = dFrom;
+    document.getElementById('dr-to').value = dTo;
+    refresh();
+  }
+
+  function presetRange(kode) {
+    var now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    if (kode === 'bulan-ini') return [dateStr(new Date(y, m, 1)), dateStr(new Date(y, m + 1, 0))];
+    if (kode === 'bulan-lalu') return [dateStr(new Date(y, m - 1, 1)), dateStr(new Date(y, m, 0))];
+    if (kode === 'tahun-ini') return [dateStr(new Date(y, 0, 1)), dateStr(new Date(y, 11, 31))];
+    if (kode === 'tahun-lalu') return [dateStr(new Date(y - 1, 0, 1)), dateStr(new Date(y - 1, 11, 31))];
+    return [shiftDays(-(Number(kode) - 1)), dateStr()];   // 7 / 30 / 90 hari terakhir
+  }
+
+  function wireDateRange() {
+    document.getElementById('dr-from').value = dFrom;
+    document.getElementById('dr-to').value = dTo;
+
+    document.getElementById('dr-apply').addEventListener('click', function () {
+      var f = document.getElementById('dr-from').value;
+      var t = document.getElementById('dr-to').value;
+      if (!f || !t) return;
+      document.querySelectorAll('[data-preset]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+      setRange(f, t);
+    });
+
+    document.querySelectorAll('[data-preset]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        range = Number(btn.getAttribute('data-range'));
-        document.querySelectorAll('[data-range]').forEach(function (b) {
+        var r = presetRange(btn.getAttribute('data-preset'));
+        document.querySelectorAll('[data-preset]').forEach(function (b) {
           b.setAttribute('aria-pressed', String(b === btn));
         });
-        refresh();
+        setRange(r[0], r[1]);
       });
     });
 
-    fillAdsForm();
-    fillNoteForm();
+    var def = document.querySelector('[data-preset="30"]');
+    if (def) def.setAttribute('aria-pressed', 'true');
   }
 
   function say(id, msg) {
@@ -1122,8 +1429,9 @@
   // Peran tanpa akses penjualan: tetap butuh angka iklan, tapi tanpa data omzet.
   async function renderAdsOnly() {
     if (!perm.ads) return;
-    var dates = lastNDates(range * 2);
-    var cur = dates.slice(range), prev = dates.slice(0, range);
+    var p = periode();
+    var cur = p.cur, prev = p.prev;
+    var dates = prev.concat(cur);
     var empty = {};
     dates.forEach(function (d) {
       empty[d] = {};

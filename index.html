@@ -137,7 +137,7 @@
   form.row{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); align-items:end; margin-top:22px; padding-top:18px; border-top:1px dashed var(--line); }
   #ads-form{ grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) minmax(170px,2fr) auto; }
   #budget-form{ grid-template-columns:1fr auto; margin-top:14px; padding-top:0; border-top:0; }
-  #work-form{ grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) auto; margin-top:16px; }
+  #work-form{ grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); margin-top:0; padding-top:0; border-top:0; }
   label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:500; }
   input[type=date], input[type=number], input[type=text], select{
     width:100%; font:inherit; font-size:15px; color:var(--ink);
@@ -169,6 +169,38 @@
   .roas-line strong{ color:var(--ink); }
 
   .hintlabel{ color:var(--ink-faint); font-weight:400; }
+
+  /* ---------- pemilih rentang tanggal ---------- */
+  .daterange{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); padding:12px 14px; margin-bottom:18px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px 18px; justify-content:space-between;
+  }
+  .dr-inputs{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .dr-inputs input[type=date]{ width:auto; padding:7px 10px; font-size:14px; }
+  .dr-lab{ margin:0; font-size:12.5px; color:var(--ink-soft); font-weight:600; }
+  .dr-presets{ gap:5px; }
+  .dr-presets .btn-quiet{ padding:6px 11px; font-size:12.5px; }
+
+  /* ---------- ringkasan ---------- */
+  .ov-grid{ display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); margin-bottom:18px; }
+  .brk{ display:grid; gap:8px; }
+  .brk .r{ display:grid; grid-template-columns:10px 1fr auto auto; align-items:center; gap:9px; font-size:13px; }
+  .brk .nm{ color:var(--ink-soft); min-width:0; overflow-wrap:anywhere; }
+  .brk .vl{ font-weight:700; font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+  .brk .pc{ color:var(--ink-faint); font-size:12px; width:42px; text-align:right; font-family:'JetBrains Mono',monospace; }
+  .brk .bar{ grid-column:2/-1; height:5px; border-radius:99px; background:#f2ebe0; overflow:hidden; margin-top:-3px; }
+  .brk .bar i{ display:block; height:100%; border-radius:99px; }
+  .brk .none{ color:var(--ink-faint); font-size:13px; }
+
+  ul.insights{ list-style:none; margin:0; padding:0; }
+  ul.insights li{
+    display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--line);
+    font-size:13.5px; color:var(--ink-soft);
+  }
+  ul.insights li:last-child{ border-bottom:0; }
+  ul.insights b{ color:var(--ink); }
+  ul.insights .ic{ flex:none; font-size:15px; line-height:1.3; }
   .table-scroll{ overflow-x:auto; margin-top:4px; }
   table.cmp{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
   table.cmp th, table.cmp td{ padding:10px 12px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
@@ -226,10 +258,19 @@
   ul.work .t{ font-size:14.5px; overflow-wrap:anywhere; }
   ul.work .m{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
   ul.work .done .t{ text-decoration:line-through; color:var(--ink-faint); }
+  ul.work .meta-row{ display:flex; flex-wrap:wrap; gap:5px 10px; align-items:center; margin-top:4px; }
+  ul.work select.stat{ width:auto; padding:4px 8px; font-size:11.5px; border-radius:7px; }
   .chip{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:99px; }
   .chip.pendek{ background:#fdf6e6; color:#8a6205; }
   .chip.panjang{ background:#eaf3e4; color:var(--herb); }
   .chip.late{ background:var(--ember-soft); color:var(--ember); }
+  .chip.pic{ background:#eef1f6; color:#3a5270; }
+  .chip.from{ background:#f4f1ea; color:var(--ink-soft); }
+  .chip.todo{ background:#f0f0f4; color:var(--ink-soft); }
+  .chip.progress{ background:#e7effa; color:#2f6fb5; }
+  .chip.done{ background:#eaf3e4; color:var(--herb); }
+  .cal-cell .dot.progress{ background:#2f6fb5; }
+  .cal-cell .dot.late{ background:var(--ember); }
   .del{ background:none; border:0; color:var(--ink-faint); font-size:19px; line-height:1; padding:5px 9px; border-radius:7px; }
   .del:hover{ color:var(--ember); background:var(--ember-soft); }
 
@@ -326,6 +367,26 @@
 
   <main class="content" id="main">
 
+    <div class="daterange" id="daterange">
+      <div class="dr-inputs">
+        <label class="dr-lab" for="dr-from">Dari</label>
+        <input type="date" id="dr-from" autocomplete="off">
+        <label class="dr-lab" for="dr-to">sampai</label>
+        <input type="date" id="dr-to" autocomplete="off">
+        <button class="btn-quiet" id="dr-apply">Terapkan</button>
+      </div>
+      <div class="dr-presets seg-group">
+        <button class="btn-quiet" data-preset="7">7 hari</button>
+        <button class="btn-quiet" data-preset="30">30 hari</button>
+        <button class="btn-quiet" data-preset="90">90 hari</button>
+        <button class="btn-quiet" data-preset="bulan-ini">Bulan ini</button>
+        <button class="btn-quiet" data-preset="bulan-lalu">Bulan lalu</button>
+        <button class="btn-quiet" data-preset="tahun-ini">Tahun ini</button>
+        <button class="btn-quiet" data-preset="tahun-lalu">Tahun lalu</button>
+      </div>
+    </div>
+
+
     <!-- ============ RINGKASAN ============ -->
     <section class="panel" id="page-ringkasan" aria-labelledby="h-ringkasan">
       <div class="page-head">
@@ -333,17 +394,50 @@
           <h1 id="h-ringkasan">Ringkasan</h1>
           <p class="sub" id="recap-period"></p>
         </div>
-        <div class="seg-group">
-          <button class="btn-quiet" data-range="7" aria-pressed="true">7 hari</button>
-          <button class="btn-quiet" data-range="30" aria-pressed="false">30 hari</button>
-          <button class="btn-copy" id="copy-recap">Salin rekap</button>
-        </div>
+        <button class="btn-copy" id="copy-recap">Salin rekap</button>
       </div>
 
       <div class="card">
         <div class="split" id="recap-kpi"></div>
-        <div class="facts" id="recap-facts"></div>
         <span class="saved" id="recap-saved" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="ov-grid">
+        <div class="card">
+          <div class="card-head"><div><h2>Penjualan</h2><p class="sub" id="ov-sales-sub"></p></div></div>
+          <div class="hero-num num" id="ov-sales-total">Rp0</div>
+          <div class="delta" id="ov-sales-delta">&nbsp;</div>
+          <p class="group-label">Dari mana penjualannya</p>
+          <div id="ov-sales-src"></div>
+          <p class="group-label">Per cabang</p>
+          <div id="ov-sales-branch"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Biaya iklan</h2><p class="sub" id="ov-ads-sub"></p></div></div>
+          <div class="hero-num num" id="ov-ads-total">Rp0</div>
+          <div class="delta" id="ov-ads-delta">&nbsp;</div>
+          <p class="group-label">Dibelanjakan ke mana</p>
+          <div id="ov-ads-src"></div>
+          <p class="group-label">Hasil yang didapat</p>
+          <div id="ov-ads-perf"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Social media</h2><p class="sub" id="ov-soc-sub"></p></div></div>
+          <div class="hero-num num" id="ov-soc-total">0</div>
+          <div class="delta" id="ov-soc-delta">&nbsp;</div>
+          <p class="group-label">Pertumbuhan per platform</p>
+          <div id="ov-soc-src"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Task tim</h2><p class="sub" id="ov-task-sub"></p></div></div>
+          <div class="hero-num num" id="ov-task-total">0%</div>
+          <div class="delta" id="ov-task-delta">&nbsp;</div>
+          <p class="group-label">Beban per orang</p>
+          <div id="ov-task-src"></div>
+        </div>
       </div>
 
       <div class="card">
@@ -355,6 +449,11 @@
         </div>
         <div class="chartbox" id="sales-chart"></div>
         <div class="legend" id="chart-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Catatan penting</h2><p class="sub">Hal yang perlu diperhatikan di periode ini</p></div></div>
+        <ul class="insights" id="ov-insights"></ul>
       </div>
     </section>
 
@@ -574,13 +673,49 @@
     <section class="panel" id="page-jadwal" aria-labelledby="h-jadwal">
       <div class="page-head">
         <div>
-          <h1 id="h-jadwal">Jadwal kerja</h1>
-          <p class="sub">Sulthan isi sendiri pekerjaannya &mdash; pilih tanggal, tulis apa yang dikerjakan</p>
+          <h1 id="h-jadwal">Task</h1>
+          <p class="sub">Siapa mengerjakan apa, diberi oleh siapa, dan kapan batas waktunya</p>
+        </div>
+        <div class="seg-group">
+          <button class="btn-quiet" data-taskview="semua" aria-pressed="true">Semua</button>
+          <button class="btn-quiet" data-taskview="saya" aria-pressed="false">Task saya</button>
+          <button class="btn-quiet" data-taskview="diberikan" aria-pressed="false">Saya beri</button>
         </div>
       </div>
 
       <div class="card">
         <div class="split" id="work-stats"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Buat task baru</h2><p class="sub">Tercatat otomatis atas namamu sebagai pemberi tugas</p></div></div>
+        <form class="row" id="work-form">
+          <div style="grid-column:1/-1">
+            <label for="w-title">Task apa?</label>
+            <input type="text" id="w-title" placeholder="mis. Bikin 3 konten promo gajian…" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="w-assignee">PIC &mdash; dikerjakan siapa</label>
+            <select id="w-assignee"></select>
+          </div>
+          <div>
+            <label for="w-deadline">Deadline</label>
+            <input type="date" id="w-deadline" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="w-scope">Jangka</label>
+            <select id="w-scope">
+              <option value="pendek">Jangka pendek</option>
+              <option value="panjang">Jangka panjang</option>
+            </select>
+          </div>
+          <div style="grid-column:1/-1">
+            <label for="w-detail">Keterangan <span class="hintlabel">(opsional)</span></label>
+            <input type="text" id="w-detail" placeholder="Detail tambahan, link brief, dsb…" autocomplete="off">
+          </div>
+          <div><button class="btn-primary" type="submit">Tambah task</button></div>
+        </form>
+        <span class="saved" id="work-saved" role="status" aria-live="polite"></span>
       </div>
 
       <div class="card">
@@ -592,39 +727,25 @@
         <div class="cal-grid" id="cal-dow" aria-hidden="true"></div>
         <div class="cal-grid" id="cal-grid" style="margin-top:6px"></div>
         <div class="legend" style="margin-top:14px">
-          <span><span class="swatch" style="background:var(--kriuk);border-radius:50%"></span>jangka pendek</span>
-          <span><span class="swatch" style="background:var(--herb);border-radius:50%"></span>jangka panjang</span>
+          <span><span class="swatch" style="background:var(--kriuk);border-radius:50%"></span>belum dikerjakan</span>
+          <span><span class="swatch" style="background:var(--blue,#2f6fb5);border-radius:50%"></span>sedang jalan</span>
           <span><span class="swatch" style="background:#ddd0bd;border-radius:50%"></span>selesai</span>
+          <span><span class="swatch" style="background:var(--ember);border-radius:50%"></span>lewat deadline</span>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><div><h2 id="work-day-title">Pekerjaan</h2><p class="sub" id="work-day-sub"></p></div></div>
+        <div class="card-head"><div><h2 id="work-day-title">Task</h2><p class="sub" id="work-day-sub"></p></div></div>
         <ul class="work" id="work-list"></ul>
-        <form class="row" id="work-form">
-          <div>
-            <label for="w-title">Pekerjaan apa?</label>
-            <input type="text" id="w-title" placeholder="mis. Bikin konten promo gajian…" autocomplete="off" required>
-          </div>
-          <div>
-            <label for="w-scope">Jangka</label>
-            <select id="w-scope">
-              <option value="pendek">Jangka pendek</option>
-              <option value="panjang">Jangka panjang</option>
-            </select>
-          </div>
-          <div><button class="btn-primary" type="submit">Tambah</button></div>
-        </form>
-        <span class="saved" id="work-saved" role="status" aria-live="polite"></span>
       </div>
 
       <div class="card">
-        <div class="card-head"><div><h2>Belum selesai &amp; lewat tanggal</h2><p class="sub">Yang tanggalnya sudah lewat tapi belum dicentang</p></div></div>
+        <div class="card-head"><div><h2>Lewat deadline</h2><p class="sub">Sudah lewat batas waktu tapi belum selesai</p></div></div>
         <ul class="work" id="work-late"></ul>
       </div>
 
       <div class="card">
-        <div class="card-head"><div><h2>Rencana jangka panjang</h2><p class="sub">Semua pekerjaan jangka panjang yang belum selesai</p></div></div>
+        <div class="card-head"><div><h2>Jangka panjang berjalan</h2><p class="sub">Proyek panjang yang belum selesai</p></div></div>
         <ul class="work" id="work-long"></ul>
       </div>
     </section>
@@ -636,9 +757,9 @@
      Tracking Prevention (Edge/Safari) memblokir akses localStorage untuk skrip
      dari domain lain, sehingga sesi login gagal tersimpan dan pengguna terlempar
      balik ke layar masuk. -->
-<script src="vendor/supabase.js?v=8"></script>
+<script src="vendor/supabase.js?v=9"></script>
 <!-- ?v= dinaikkan tiap kali app.js berubah, supaya browser tidak memakai versi lama -->
-<script src="config.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
