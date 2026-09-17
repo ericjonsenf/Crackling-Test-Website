@@ -275,6 +275,30 @@
   .del:hover{ color:var(--ember); background:var(--ember-soft); }
 
   .banner{ background:#fdf6e6; border:1px solid #f0dfb8; color:#7a5c12; font-size:12.5px; border-radius:10px; padding:9px 13px; margin-bottom:18px; }
+
+  /* ---------- growth signal (ringkasan) ---------- */
+  .growth{ display:flex; gap:12px; align-items:flex-start; border-radius:14px; padding:15px 18px; margin-bottom:18px; border:1px solid; }
+  .growth .gi{ font-size:21px; line-height:1.3; flex:none; }
+  .growth b{ display:block; font-family:'Baloo 2',sans-serif; font-size:14.5px; margin-bottom:2px; }
+  .growth p{ margin:0; font-size:13.5px; }
+  .growth.good{ background:#eaf3e4; border-color:#cfe3c0; color:#3a5c28; }
+  .growth.warn{ background:#fdf6e6; border-color:#f0dfb8; color:#7a5c12; }
+  .growth.alert{ background:var(--ember-soft); border-color:#f4d9cc; color:#8a3009; }
+
+  /* ---------- sorotan performa channel (iklan) ---------- */
+  .hl-grid{ display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }
+  .hl-col{ border:1px solid var(--line); border-radius:11px; padding:13px 14px; background:#fffdfa; }
+  .hl-col h3{ font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; margin:0 0 9px; }
+  .hl-row{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:12.5px; }
+  .hl-row:last-child{ border-bottom:0; }
+  .hl-row .nm{ color:var(--ink-soft); min-width:0; }
+  .hl-row .vl{ font-weight:700; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+
+  .promo-impact{ font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:99px; flex:none; white-space:nowrap; font-family:'JetBrains Mono',monospace; }
+  .promo-impact.up{ background:#eaf3e4; color:var(--herb); }
+  .promo-impact.down{ background:var(--ember-soft); color:var(--ember); }
+  .promo-impact.flat{ background:#f0f0f4; color:var(--ink-faint); }
+
   .empty{ color:var(--ink-faint); font-size:13.5px; padding:14px 0; display:block; }
   .saved{ font-size:12.5px; color:var(--herb); font-weight:600; opacity:0; transition:opacity .2s; display:block; margin-top:8px; }
   .saved.show{ opacity:1; }
@@ -396,6 +420,8 @@
         </div>
         <button class="btn-copy" id="copy-recap">Salin rekap</button>
       </div>
+
+      <div class="growth" id="growth-signal" role="status" aria-live="polite"></div>
 
       <div class="card" data-money>
         <div class="card-head">
@@ -565,7 +591,9 @@
           <h1 id="h-iklan">Iklan</h1>
           <p class="sub" id="budget-month-label"></p>
         </div>
+        <button class="btn-copy" id="copy-ads">Salin performa iklan</button>
       </div>
+      <span class="saved" id="ads-recap-saved" role="status" aria-live="polite"></span>
 
       <div class="card">
         <div class="card-head"><div><h2>Pemakaian budget</h2></div></div>
@@ -602,6 +630,14 @@
         <p class="group-label">Efisiensi: CPC &amp; CTR per hari</p>
         <div class="chartbox" id="eff-chart"></div>
         <div class="legend" id="eff-legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Sorotan performa</h2><p class="sub">CTR, CPC, dan ROAS tiap channel dibanding periode lalu</p></div></div>
+        <div class="hl-grid">
+          <div class="hl-col"><h3>Membaik</h3><div id="hl-good"></div></div>
+          <div class="hl-col"><h3>Perlu diperhatikan</h3><div id="hl-watch"></div></div>
+        </div>
       </div>
 
       <div class="card">
@@ -796,9 +832,9 @@
      Tracking Prevention (Edge/Safari) memblokir akses localStorage untuk skrip
      dari domain lain, sehingga sesi login gagal tersimpan dan pengguna terlempar
      balik ke layar masuk. -->
-<script src="vendor/supabase.js?v=12"></script>
+<script src="vendor/supabase.js?v=13"></script>
 <!-- ?v= dinaikkan tiap kali app.js berubah, supaya browser tidak memakai versi lama -->
-<script src="config.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

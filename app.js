@@ -302,6 +302,7 @@
     return longDate(dFrom) + ' – ' + longDate(dTo) + ' · ' + range + ' hari';
   }
   var recapText = '';
+  var adsRecapText = '';
 
   function branchTotal(s) { return s.esb + s.gojek_grab + s.paper; }
   function dayTotal(m) { return BRANCHES.reduce(function (a, b) { return a + branchTotal(m[b.key]); }, 0); }
@@ -561,6 +562,11 @@
         addAd(totalAd, ads[d][c.key]);
       });
     });
+    var byChannelPrev = {};
+    CHANNELS.forEach(function (c) { byChannelPrev[c.key] = emptyAd(); });
+    prev.forEach(function (d) {
+      CHANNELS.forEach(function (c) { addAd(byChannelPrev[c.key], ads[d][c.key]); });
+    });
     var m = derive(totalAd);
     var spend = m.spend;
     var spendPrev = prev.reduce(function (a, d) { return a + daySpend(ads[d]); }, 0);
@@ -655,6 +661,11 @@
       '<span><span class="swatch" style="background:var(--kriuk)"></span>CPC (skala kiri)</span>' +
       '<span><span class="swatch" style="background:var(--ember);border-radius:50%"></span>CTR (skala kanan)</span>';
 
+    // --- sorotan performa: channel mana membaik / perlu dicek vs periode lalu ---
+    var hl = buildHighlights(byChannel, byChannelPrev);
+    document.getElementById('hl-good').innerHTML = highlightRowsHtml(hl.good, dec);
+    document.getElementById('hl-watch').innerHTML = highlightRowsHtml(hl.watch, dec);
+
     // --- tabel perbandingan channel ---
     document.getElementById('table-sub').textContent = periodLabel;
     var cols = ['Channel', 'Biaya', 'Impresi', 'Klik', 'CTR', 'CPC', 'CPM', 'Hasil', 'Biaya/hasil', 'ROAS'];
@@ -676,13 +687,57 @@
       CHANNELS.map(function (c) { return rowHtml(c.label, c.color, derive(byChannel[c.key])); }).join('') +
       rowHtml('Total', '', m, 'tot') + '</tbody>';
 
-    // --- catatan promo ---
+    // --- catatan promo, dengan dampaknya ke omzet (gaya "campaign -> sales") ---
+    // Baseline = rata-rata omzet hari TANPA promo di periode ini. Hanya berarti untuk
+    // peran yang boleh melihat uang — untuk peran ads-only, `sales` datang kosong semua.
     var noteDays = cur.filter(function (d) { return notes[d]; }).reverse();
+    var baseDays = cur.filter(function (d) { return !notes[d] && dayTotal(sales[d]) > 0; });
+    var baseAvg = baseDays.length ? baseDays.reduce(function (a, d) { return a + dayTotal(sales[d]); }, 0) / baseDays.length : 0;
+    var promoImpact = {};
+    noteDays.forEach(function (d) {
+      var v = dayTotal(sales[d]);
+      promoImpact[d] = { v: v, pct: baseAvg ? Math.round(((v - baseAvg) / baseAvg) * 100) : null };
+    });
     document.getElementById('note-list').innerHTML = noteDays.length
       ? noteDays.slice(0, 8).map(function (d) {
-          return '<li><span class="when num">' + shortLabel(d) + '</span><span class="what">' + esc(notes[d]) + '</span></li>';
+          var badge = '';
+          if (perm.money && baseAvg) {
+            var info = promoImpact[d];
+            var cls = info.pct === null ? 'flat' : info.pct >= 0 ? 'up' : 'down';
+            badge = '<span class="promo-impact ' + cls + '">' + rupiah(info.v) +
+              (info.pct !== null ? ' · ' + (info.pct >= 0 ? '+' : '') + info.pct + '%' : '') + '</span>';
+          }
+          return '<li><span class="when num">' + shortLabel(d) + '</span><span class="what">' + esc(notes[d]) + '</span>' + badge + '</li>';
         }).join('')
       : '<li><span class="empty">Belum ada promo dicatat.</span></li>';
+
+    // --- teks performa iklan untuk WhatsApp ---
+    var chSpend = CHANNELS.map(function (c) {
+      return { label: c.label, v: byChannel[c.key].spend };
+    }).sort(function (a, b) { return b.v - a.v; });
+    var AL = [];
+    AL.push('*Performa Iklan Crackling — ' + longDate(cur[0]) + ' s/d ' + longDate(cur[cur.length - 1]) + '*', '');
+    AL.push('Total biaya: ' + rupiah(spend) + (sp !== null ? ' (' + (sp >= 0 ? '+' : '') + sp + '% vs periode lalu)' : ''));
+    chSpend.forEach(function (c) { if (c.v) AL.push('• ' + c.label + ': ' + rupiah(c.v) + ' (' + Math.round((c.v / spend) * 100) + '%)'); });
+    AL.push('', 'Impresi ' + num(m.impressions) + ' · Klik ' + num(m.clicks) + (m.ctr ? ' · CTR ' + dec(m.ctr) + '%' : ''));
+    AL.push('CPC ' + (m.cpc ? rupiah(m.cpc) : '—') + ' · CPM ' + (m.cpm ? rupiah(m.cpm) : '—'));
+    if (m.results) AL.push('Hasil ' + num(m.results) + ' · Biaya/hasil ' + rupiah(m.cpa));
+    AL.push('ROAS platform: ' + (m.roas ? dec(m.roas, 1) + '×' : '—') +
+      (perm.money && spend ? ' · ROAS blended: ' + dec(blendedRoas, 1) + '×' : ''));
+    if (hl.good.length || hl.watch.length) {
+      AL.push('');
+      if (hl.good.length) { AL.push('Membaik:'); hl.good.forEach(function (r) { AL.push('• ' + r.channel + ' · ' + r.metric + ' ' + (r.change >= 0 ? '↑ +' : '↓ ') + Math.round(Math.abs(r.change)) + '%'); }); }
+      if (hl.watch.length) { AL.push('Perlu diperhatikan:'); hl.watch.forEach(function (r) { AL.push('• ' + r.channel + ' · ' + r.metric + ' ' + (r.change >= 0 ? '↑ +' : '↓ ') + Math.round(Math.abs(r.change)) + '%'); }); }
+    }
+    if (noteDays.length) {
+      AL.push('', 'Promo yang jalan:');
+      noteDays.slice(0, 8).forEach(function (d) {
+        var info = promoImpact[d];
+        AL.push('• ' + notes[d] + ' (' + shortLabel(d) + ')' +
+          (perm.money && baseAvg ? ' — ' + rupiah(info.v) + (info.pct !== null ? ' (' + (info.pct >= 0 ? '+' : '') + info.pct + '% vs hari biasa)' : '') : ''));
+      });
+    }
+    adsRecapText = AL.join('\n');
   }
 
   // Satu baris rincian: nama, nilai, persentase, dan batang proporsi.
@@ -704,6 +759,73 @@
     var naik = p >= 0;
     return '<span class="' + (naik ? 'up' : 'down') + '">' + (naik ? '↑ +' : '↓ ') + p + '%</span>' +
       ' <span class="flat">vs periode lalu' + (suffix || '') + '</span>';
+  }
+
+  // ---------- sorotan performa channel (gaya "top/bottom performing metrics") ----------
+  // Untuk tiap channel yang aktif periode ini, bandingkan CTR/CPC/ROAS/biaya-per-hasil
+  // dengan periode sebelumnya. Dipisah dua kelompok: yang membaik dan yang perlu dicek.
+  var HL_METRICS = { ctr: 'CTR', cpc: 'CPC', roas: 'ROAS', cpa: 'Biaya/hasil' };
+  function metricGoodDir(k) { return (k === 'ctr' || k === 'roas') ? 1 : -1; } // 1 = naik itu bagus
+  function buildHighlights(byChannel, byChannelPrev) {
+    var rows = [];
+    CHANNELS.forEach(function (c) {
+      var now = derive(byChannel[c.key]), prev = derive(byChannelPrev[c.key]);
+      if (!now.spend) return; // channel tak dipakai periode ini, lewati
+      Object.keys(HL_METRICS).forEach(function (k) {
+        // hindari "biaya turun jadi 0" palsu ketika klik/hasilnya memang nol, bukan makin efisien
+        if (k === 'cpc' && (!now.clicks || !prev.clicks)) return;
+        if (k === 'cpa' && (!now.results || !prev.results)) return;
+        var nowV = now[k], prevV = prev[k];
+        if (!prevV) return; // tak ada pembanding periode lalu
+        var change = ((nowV - prevV) / prevV) * 100;
+        if (!change) return;
+        rows.push({ channel: c.label, metric: HL_METRICS[k], k: k, now: nowV, change: change, good: change * metricGoodDir(k) > 0 });
+      });
+    });
+    var byMag = function (a, b) { return Math.abs(b.change) - Math.abs(a.change); };
+    return {
+      good: rows.filter(function (r) { return r.good; }).sort(byMag).slice(0, 4),
+      watch: rows.filter(function (r) { return !r.good; }).sort(byMag).slice(0, 4)
+    };
+  }
+  function highlightRowsHtml(list, dec) {
+    if (!list.length) return '<p class="hl-empty" style="color:var(--ink-faint);font-size:12.5px;margin:0">Belum ada perubahan berarti dibanding periode lalu.</p>';
+    return list.map(function (r) {
+      var val = r.k === 'ctr' ? dec(r.now) + '%' : r.k === 'roas' ? dec(r.now, 1) + '×' : rupiah(r.now);
+      return '<div class="hl-row"><span class="nm">' + r.channel + ' · ' + r.metric + '</span>' +
+        '<span class="vl ' + (r.change >= 0 ? 'up' : 'down') + '">' + (r.change >= 0 ? '↑ +' : '↓ ') +
+        Math.round(Math.abs(r.change)) + '% <span class="flat" style="font-weight:400">(' + val + ')</span></span></div>';
+    }).join('');
+  }
+
+  // ---------- growth signal (gaya "1 hal yang perlu diperhatikan hari ini") ----------
+  function growthSignal(ctx) {
+    if (ctx.telat.length) {
+      return { cls: 'alert', icon: '⏰', title: ctx.telat.length + ' task lewat deadline',
+        msg: 'Perlu ditindak: ' + ctx.telat.slice(0, 2).map(function (t) { return esc(t.title); }).join(', ') +
+          (ctx.telat.length > 2 ? ', dan lainnya' : '') + '.' };
+    }
+    if (ctx.spendNow && ctx.revNow) {
+      var rasio = (ctx.spendNow / ctx.revNow) * 100;
+      if (rasio > 15) {
+        return { cls: 'warn', icon: '💸', title: 'Iklan makan ' + Math.round(rasio) + '% dari penjualan',
+          msg: 'Cukup tinggi untuk usaha makanan — cek efisiensi tiap channel di halaman Iklan.' };
+      }
+    }
+    if (ctx.kosong > 0) {
+      return { cls: 'warn', icon: '📭', title: ctx.kosong + ' hari belum ada data penjualan tercatat',
+        msg: 'Rekap periode ini bisa jadi lebih rendah dari kenyataan — lengkapi di halaman Penjualan.' };
+    }
+    if (ctx.revPct !== null && ctx.revPct <= -10) {
+      return { cls: 'alert', icon: '📉', title: 'Penjualan turun ' + Math.abs(ctx.revPct) + '%',
+        msg: 'Dibanding periode lalu (' + rupiah(ctx.revPrev) + ') — cek promo atau operasional cabang.' };
+    }
+    if (ctx.revPct !== null && ctx.revPct >= 10) {
+      return { cls: 'good', icon: '📈', title: 'Penjualan naik ' + ctx.revPct + '%',
+        msg: 'Dibanding periode lalu (' + rupiah(ctx.revPrev) + ') — pertahankan pola yang sedang berjalan.' };
+    }
+    return { cls: 'good', icon: '🙂', title: 'Tidak ada yang mendesak',
+      msg: 'Penjualan dan task berjalan normal di periode ini.' };
   }
 
   // ---------- target vs realisasi ----------
@@ -1053,6 +1175,12 @@
     document.getElementById('ov-insights').innerHTML = ins.length
       ? ins.map(function (x) { return '<li>' + x + '</li>'; }).join('')
       : '<li><span class="ic">🙂</span><span>Belum ada cukup data untuk disimpulkan di periode ini.</span></li>';
+
+    // ---------- growth signal: satu hal terpenting untuk dilihat lebih dulu ----------
+    var gs = growthSignal({ revNow: revNow, revPrev: revPrev, revPct: revPct, spendNow: spendNow, kosong: kosong, telat: telat });
+    var gsEl = document.getElementById('growth-signal');
+    gsEl.className = 'growth ' + gs.cls;
+    gsEl.innerHTML = '<span class="gi" aria-hidden="true">' + gs.icon + '</span><span><b>' + gs.title + '</b><p>' + gs.msg + '</p></span>';
 
     // ---------- teks rekap untuk WhatsApp ----------
     var L = [];
@@ -1442,6 +1570,20 @@
         ta.remove();
       }
       say('recap-saved', 'Rekap tersalin — tinggal paste ke grup');
+    });
+
+    document.getElementById('copy-ads').addEventListener('click', async function () {
+      try {
+        await navigator.clipboard.writeText(adsRecapText);
+      } catch (e) {
+        var ta = document.createElement('textarea');
+        ta.value = adsRecapText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      say('ads-recap-saved', 'Performa iklan tersalin — tinggal paste ke grup');
     });
 
     wireDateRange();
