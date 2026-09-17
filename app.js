@@ -201,10 +201,14 @@
     async saveBudget(mk, amount) {
       return await sb.from('monthly_budget').upsert({ month: mk, ad_budget: amount }, { onConflict: 'month' });
     },
-    // total biaya iklan satu bulan kalender, semua channel
+    // total biaya iklan satu bulan kalender, semua channel.
+    // Batas akhir dihitung dari panjang bulan sebenarnya — "-31" bikin Postgres
+    // menolak dengan "date/time field value out of range" di bulan 30 hari.
     async getMonthSpend(mk) {
+      var y = Number(mk.slice(0, 4)), m = Number(mk.slice(5, 7));
+      var akhir = dateStr(new Date(y, m, 0));   // hari 0 bulan berikutnya = hari terakhir bulan ini
       var res = await sb.from('ad_daily').select('spend')
-        .gte('entry_date', mk + '-01').lte('entry_date', mk + '-31');
+        .gte('entry_date', mk + '-01').lte('entry_date', akhir);
       return (res.data || []).reduce(function (s, r) { return s + (Number(r.spend) || 0); }, 0);
     },
 
