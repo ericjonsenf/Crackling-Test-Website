@@ -8,6 +8,20 @@
   var cfg = window.SUPABASE_CONFIG || {};
   var sb = window.supabase.createClient(cfg.url, cfg.anonKey);
 
+  // Sesi login disimpan di localStorage. Sebagian browser (Edge dengan Tracking
+  // Prevention, Safari, mode privat) bisa memblokirnya — akibatnya login berhasil
+  // tapi sesinya hilang seketika dan pengguna terlempar balik ke layar masuk.
+  // Dicek di awal supaya bisa diberi tahu, bukan gagal tanpa keterangan.
+  function storageBisaDipakai() {
+    try {
+      localStorage.setItem('__cek', '1');
+      localStorage.removeItem('__cek');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Siapa boleh melihat apa. Harus cermin dari policy di supabase-schema.sql.
   var PERMS = {
     owner: { money: true, ads: true, social: true, allWork: true },
@@ -1131,6 +1145,11 @@
   async function boot(session, firstLoad) {
     if (!session) session = await Auth.session();
     if (!session) {
+      if (!firstLoad && !storageBisaDipakai()) {
+        showLogin('Browser memblokir penyimpanan sesi, jadi login tidak bisa bertahan. ' +
+          'Di Edge: Settings > Privacy > Tracking prevention, set ke Basic, atau tambahkan situs ini ke daftar pengecualian.');
+        return;
+      }
       showLogin(firstLoad ? '' : 'Login berhasil tapi sesi tidak terbaca. Coba muat ulang halaman (Ctrl+Shift+R).');
       return;
     }

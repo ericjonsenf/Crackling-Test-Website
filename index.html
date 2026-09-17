@@ -632,7 +632,11 @@
   </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- Pustaka Supabase disimpan sendiri, bukan dari CDN pihak ketiga.
+     Tracking Prevention (Edge/Safari) memblokir akses localStorage untuk skrip
+     dari domain lain, sehingga sesi login gagal tersimpan dan pengguna terlempar
+     balik ke layar masuk. -->
+<script src="vendor/supabase.js?v=8"></script>
 <!-- ?v= dinaikkan tiap kali app.js berubah, supaya browser tidak memakai versi lama -->
 <script src="config.js?v=8"></script>
 <script src="app.js?v=8"></script>
